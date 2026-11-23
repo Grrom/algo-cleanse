@@ -1,0 +1,8 @@
+node_modules
+.output
+.wxt
+coverage
+build
+.icarus/notes.md
+.DS_Store
+*.zip

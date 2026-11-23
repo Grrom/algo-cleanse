@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Build Chrome MV3
+        run: npm run build
+
+      - name: Build Firefox MV3
+        run: npm run build:firefox
+
+      - name: Lint Firefox extension
+        run: npx web-ext lint --source-dir .output/firefox-mv3
+
+      - name: Package Chrome extension
+        run: npm run zip
+
+      - name: Package Firefox extension
+        run: npm run zip:firefox
+
+      - name: Upload Chrome extension zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: .output/*-chrome.zip
+
+      - name: Upload Firefox extension zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: .output/*-firefox.zip
