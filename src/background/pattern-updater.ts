@@ -17,12 +17,6 @@ export function getApiBaseUrl(): string {
   if (metaUrl && typeof metaUrl === 'string' && metaUrl.trim() !== '') {
     return metaUrl.trim();
   }
-  if (typeof process !== 'undefined' && process.env?.WXT_API_BASE_URL) {
-    const procUrl = process.env.WXT_API_BASE_URL;
-    if (typeof procUrl === 'string' && procUrl.trim() !== '') {
-      return procUrl.trim();
-    }
-  }
   return '';
 }
 
@@ -105,11 +99,7 @@ async function performUpdate(apiBaseUrl?: string): Promise<boolean> {
   }
 }
 
-export function initPatternUpdater(): void {
-  browser.alarms.create(PATTERN_REFRESH_ALARM, {
-    periodInMinutes: PATTERN_REFRESH_PERIOD_MINUTES,
-  });
-
+export function initPatternUpdater(): Promise<void> {
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PATTERN_REFRESH_ALARM) {
       void updatePatterns();
@@ -122,5 +112,13 @@ export function initPatternUpdater(): void {
 
   browser.runtime.onStartup.addListener(() => {
     void updatePatterns();
+  });
+
+  return browser.alarms.get(PATTERN_REFRESH_ALARM).then((existingAlarm) => {
+    if (!existingAlarm) {
+      browser.alarms.create(PATTERN_REFRESH_ALARM, {
+        periodInMinutes: PATTERN_REFRESH_PERIOD_MINUTES,
+      });
+    }
   });
 }

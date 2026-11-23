@@ -23,17 +23,19 @@ describe('pattern-updater', () => {
     fakeBrowser.reset();
     await storage.clear('local');
     vi.restoreAllMocks();
-    delete process.env.WXT_API_BASE_URL;
+    vi.unstubAllEnvs();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   // Acceptance criterion: Alarm patterns-refresh registered with 720-minute period
   describe('Alarm patterns-refresh registered with 720-minute period', () => {
     it('registers alarm patterns-refresh with 720-minute period on initialization', async () => {
-      initPatternUpdater();
+      await initPatternUpdater();
 
       const alarm = await fakeBrowser.alarms.get(PATTERN_REFRESH_ALARM);
       expect(alarm).toBeDefined();
@@ -42,8 +44,34 @@ describe('pattern-updater', () => {
       expect(PATTERN_REFRESH_PERIOD_MINUTES).toBe(720);
     });
 
+    it('does not recreate alarm on repeated initialization when already present', async () => {
+      vi.useFakeTimers();
+      const t0 = new Date('2026-11-23T12:00:00Z').getTime();
+      vi.setSystemTime(t0);
+
+      await initPatternUpdater();
+
+      const initialAlarm = await fakeBrowser.alarms.get(PATTERN_REFRESH_ALARM);
+      expect(initialAlarm).toBeDefined();
+      expect(initialAlarm?.periodInMinutes).toBe(720);
+      const scheduledTime = initialAlarm?.scheduledTime;
+
+      // Advance clock by 2 hours
+      vi.setSystemTime(t0 + 2 * 60 * 60 * 1000);
+
+      // Re-initialize (e.g. on background service worker wake)
+      await initPatternUpdater();
+
+      const recheckedAlarm = await fakeBrowser.alarms.get(
+        PATTERN_REFRESH_ALARM,
+      );
+      expect(recheckedAlarm).toBeDefined();
+      expect(recheckedAlarm?.scheduledTime).toBe(scheduledTime);
+      expect(recheckedAlarm?.periodInMinutes).toBe(720);
+    });
+
     it('triggers updatePatterns on alarm patterns-refresh event', async () => {
-      initPatternUpdater();
+      await initPatternUpdater();
 
       const higher = JSON.parse(JSON.stringify(patternsJson)) as Patterns;
       higher.revision = BUNDLED_PATTERNS.revision + 1;
@@ -55,7 +83,7 @@ describe('pattern-updater', () => {
         }),
       );
 
-      process.env.WXT_API_BASE_URL = TEST_API_BASE;
+      vi.stubEnv('WXT_API_BASE_URL', TEST_API_BASE);
 
       // Trigger matching alarm
       await fakeBrowser.alarms.onAlarm.trigger({
@@ -80,7 +108,7 @@ describe('pattern-updater', () => {
     });
 
     it('triggers updatePatterns on runtime.onInstalled event', async () => {
-      initPatternUpdater();
+      await initPatternUpdater();
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify(patternsJson), {
@@ -89,7 +117,7 @@ describe('pattern-updater', () => {
         }),
       );
 
-      process.env.WXT_API_BASE_URL = TEST_API_BASE;
+      vi.stubEnv('WXT_API_BASE_URL', TEST_API_BASE);
 
       await fakeBrowser.runtime.onInstalled.trigger({
         reason: 'install',
@@ -102,7 +130,7 @@ describe('pattern-updater', () => {
     });
 
     it('triggers updatePatterns on runtime.onStartup event', async () => {
-      initPatternUpdater();
+      await initPatternUpdater();
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify(patternsJson), {
@@ -111,7 +139,7 @@ describe('pattern-updater', () => {
         }),
       );
 
-      process.env.WXT_API_BASE_URL = TEST_API_BASE;
+      vi.stubEnv('WXT_API_BASE_URL', TEST_API_BASE);
 
       await fakeBrowser.runtime.onStartup.trigger();
 
@@ -125,7 +153,7 @@ describe('pattern-updater', () => {
   // Acceptance criterion: Empty WXT_API_BASE_URL -> no fetch
   describe('Empty WXT_API_BASE_URL -> no fetch', () => {
     it('does not call fetch when WXT_API_BASE_URL is not set', async () => {
-      delete process.env.WXT_API_BASE_URL;
+      vi.unstubAllEnvs();
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
       const result = await updatePatterns();
@@ -137,7 +165,7 @@ describe('pattern-updater', () => {
     });
 
     it('does not call fetch when WXT_API_BASE_URL is empty string or whitespace', async () => {
-      process.env.WXT_API_BASE_URL = '   ';
+      vi.stubEnv('WXT_API_BASE_URL', '   ');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
       const result = await updatePatterns('');
@@ -373,6 +401,8 @@ describe('pattern-updater', () => {
     });
 
     it('leaves storage unchanged on timeout', async () => {
+      vi.useFakeTimers();
+
       const existing = JSON.parse(JSON.stringify(patternsJson)) as Patterns;
       existing.revision = BUNDLED_PATTERNS.revision + 2;
       const initialRecord: RemotePatternsRecord = {
@@ -381,11 +411,30 @@ describe('pattern-updater', () => {
       };
       await storage.setItem('local:remotePatterns', initialRecord);
 
-      vi.spyOn(globalThis, 'fetch').mockRejectedValue(
-        new DOMException('The operation was aborted.', 'AbortError'),
-      );
+      vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+        return new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(
+              init.signal?.reason ??
+                new DOMException('The operation was aborted.', 'AbortError'),
+            );
+          });
+        });
+      });
 
-      const updated = await updatePatterns(TEST_API_BASE);
+      let settled = false;
+      const p = updatePatterns(TEST_API_BASE).then((res) => {
+        settled = true;
+        return res;
+      });
+
+      // Promise is still pending at 9,999 ms
+      await vi.advanceTimersByTimeAsync(9_999);
+      expect(settled).toBe(false);
+
+      // Times out after 10,000 ms
+      await vi.advanceTimersByTimeAsync(1);
+      const updated = await p;
       expect(updated).toBe(false);
 
       const stored = await storage.getItem<RemotePatternsRecord>(
