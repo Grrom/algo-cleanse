@@ -1,0 +1,20 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [
+    {
+      name: 'markdown-raw',
+      transform(code, id) {
+        if (id.endsWith('.md')) {
+          return {
+            code: `export default ${JSON.stringify(code)};`,
+            map: null,
+          };
+        }
+      },
+    },
+  ],
+  test: {
+    environment: 'node',
+  },
+});

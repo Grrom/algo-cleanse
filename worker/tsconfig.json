@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "../patterns/patterns.json",
+    "../docs/privacy.md"
+  ]
+}

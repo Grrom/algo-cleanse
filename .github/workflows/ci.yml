@@ -38,6 +38,14 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage
 
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
+
+      - name: Run worker tests
+        working-directory: worker
+        run: npm test
+
       - name: Build Chrome MV3
         run: npm run build
 
