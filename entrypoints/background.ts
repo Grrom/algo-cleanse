@@ -1,3 +1,5 @@
+import { initPatternUpdater } from '../src/background/pattern-updater';
+
 export default defineBackground(() => {
-  // Background script entrypoint
+  initPatternUpdater();
 });
