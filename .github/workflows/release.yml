@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (upload artifacts only, do not publish or release)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  WXT_API_BASE_URL: ${{ vars.WXT_API_BASE_URL }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "DRY_RUN=true" >> "$GITHUB_ENV"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "DRY_RUN=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check version matches tag
+        if: startsWith(github.ref, 'refs/tags/') || (!inputs.dry_run && github.event_name == 'workflow_dispatch')
+        run: node scripts/check-version.mjs "${{ github.ref_name }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build and package release
+        run: npm run release
+
+      - name: Upload release artifacts (dry run)
+        if: steps.mode.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            .output/*-chrome.zip
+            .output/*-firefox.zip
+            .output/*-sources.zip
+
+      - name: Create GitHub Release
+        if: steps.mode.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            .output/*-chrome.zip \
+            .output/*-firefox.zip \
+            .output/*-sources.zip \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
+
+      - name: Upload and publish to Chrome Web Store
+        env:
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          if [ "${{ steps.mode.outputs.dry_run }}" = "true" ]; then
+            echo "::notice::Dry run enabled; skipping Chrome Web Store upload and publish."
+            exit 0
+          fi
+
+          if [ -z "$CWS_EXTENSION_ID" ] || [ -z "$CWS_CLIENT_ID" ] || [ -z "$CWS_CLIENT_SECRET" ] || [ -z "$CWS_REFRESH_TOKEN" ]; then
+            echo "::notice::Missing Chrome Web Store secrets (CWS_EXTENSION_ID, CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN); skipping Chrome Web Store upload and publish."
+            exit 0
+          fi
+
+          CHROME_ZIP=$(ls .output/*-chrome.zip | head -n 1)
+          npx --yes chrome-webstore-upload-cli upload \
+            --source "$CHROME_ZIP" \
+            --extension-id "$CWS_EXTENSION_ID" \
+            --client-id "$CWS_CLIENT_ID" \
+            --client-secret "$CWS_CLIENT_SECRET" \
+            --refresh-token "$CWS_REFRESH_TOKEN" \
+            --auto-publish
+
+      - name: Sign and publish to Firefox Add-ons (AMO)
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ "${{ steps.mode.outputs.dry_run }}" = "true" ]; then
+            echo "::notice::Dry run enabled; skipping Firefox Add-ons signing and publish."
+            exit 0
+          fi
+
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::notice::Missing Firefox Add-ons secrets (AMO_JWT_ISSUER, AMO_JWT_SECRET); skipping Firefox Add-ons signing and publish."
+            exit 0
+          fi
+
+          SOURCES_ZIP=$(ls .output/*-sources.zip | head -n 1)
+          npx web-ext sign \
+            --source-dir .output/firefox-mv3 \
+            --channel=listed \
+            --upload-source-code "$SOURCES_ZIP" \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET"
