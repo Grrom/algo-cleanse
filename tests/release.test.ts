@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,8 +16,19 @@ describe('release automation', () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     expect(pkg.scripts?.release).toBeDefined();
 
-    // Verify .output/ contains chrome zip, firefox zip, and sources zip
     const outputDir = path.resolve(rootDir, '.output');
+    if (fs.existsSync(outputDir)) {
+      fs.rmSync(outputDir, { recursive: true, force: true });
+    }
+
+    execSync('npm run release', {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 60000,
+    });
+
+    // Verify .output/ contains chrome zip, firefox zip, and sources zip
     expect(fs.existsSync(outputDir)).toBe(true);
 
     const files = fs.readdirSync(outputDir);
@@ -29,19 +41,16 @@ describe('release automation', () => {
     expect(sourcesZip).toBeDefined();
 
     // Verify file sizes are greater than 0
-    if (chromeZip) {
-      const stats = fs.statSync(path.join(outputDir, chromeZip));
-      expect(stats.size).toBeGreaterThan(0);
-    }
-    if (firefoxZip) {
-      const stats = fs.statSync(path.join(outputDir, firefoxZip));
-      expect(stats.size).toBeGreaterThan(0);
-    }
-    if (sourcesZip) {
-      const stats = fs.statSync(path.join(outputDir, sourcesZip));
-      expect(stats.size).toBeGreaterThan(0);
-    }
-  });
+    expect(fs.statSync(path.join(outputDir, chromeZip!)).size).toBeGreaterThan(
+      0,
+    );
+    expect(fs.statSync(path.join(outputDir, firefoxZip!)).size).toBeGreaterThan(
+      0,
+    );
+    expect(fs.statSync(path.join(outputDir, sourcesZip!)).size).toBeGreaterThan(
+      0,
+    );
+  }, 60000);
 
   // Workflow has concurrency with cancel-in-progress: true
   it('Workflow has concurrency with cancel-in-progress: true', () => {

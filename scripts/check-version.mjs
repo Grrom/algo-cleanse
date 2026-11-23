@@ -90,7 +90,12 @@ export function getPackageVersion(pkgPath) {
  * @returns {number} Exit code (0 for success, 1 for failure)
  */
 export function main(argv = process.argv.slice(2), env = process.env, pkgPath) {
-  const tag = argv[0] || env.TAG || env.GITHUB_REF_NAME || env.GITHUB_REF;
+  const tag =
+    argv[0] ||
+    env.TAG ||
+    (env.GITHUB_REF?.startsWith('refs/tags/') ? env.GITHUB_REF : undefined) ||
+    env.GITHUB_REF_NAME ||
+    env.GITHUB_REF;
   if (!tag) {
     console.error(
       'Error: Tag must be provided as an argument or via TAG/GITHUB_REF_NAME environment variable.',

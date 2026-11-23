@@ -85,11 +85,17 @@ describe('scripts/check-version.mjs', () => {
 
   it('reads tag from environment variables GITHUB_REF_NAME, TAG, or GITHUB_REF', () => {
     const matchingTag = `v${currentVersion}`;
+    const baseEnv = {
+      ...process.env,
+      TAG: '',
+      GITHUB_REF_NAME: '',
+      GITHUB_REF: '',
+    };
 
     // Test GITHUB_REF_NAME
     const envRefNameResult = spawnSync(process.execPath, [scriptPath], {
       encoding: 'utf8',
-      env: { ...process.env, GITHUB_REF_NAME: matchingTag },
+      env: { ...baseEnv, GITHUB_REF_NAME: matchingTag },
     });
     expect(envRefNameResult.status).toBe(0);
     expect(envRefNameResult.stdout).toContain('Version check passed');
@@ -97,7 +103,7 @@ describe('scripts/check-version.mjs', () => {
     // Test TAG
     const envTagResult = spawnSync(process.execPath, [scriptPath], {
       encoding: 'utf8',
-      env: { ...process.env, TAG: matchingTag },
+      env: { ...baseEnv, TAG: matchingTag },
     });
     expect(envTagResult.status).toBe(0);
     expect(envTagResult.stdout).toContain('Version check passed');
@@ -105,7 +111,7 @@ describe('scripts/check-version.mjs', () => {
     // Test GITHUB_REF
     const envRefResult = spawnSync(process.execPath, [scriptPath], {
       encoding: 'utf8',
-      env: { ...process.env, GITHUB_REF: `refs/tags/${matchingTag}` },
+      env: { ...baseEnv, GITHUB_REF: `refs/tags/${matchingTag}` },
     });
     expect(envRefResult.status).toBe(0);
     expect(envRefResult.stdout).toContain('Version check passed');
