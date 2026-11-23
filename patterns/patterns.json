@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "version": "2026.11.23",
+  "minEngineVersion": 1,
+  "thresholds": {
+    "gentle": 5,
+    "balanced": 3,
+    "strict": 2
+  },
+  "categories": [
+    {
+      "id": "bait-phrase",
+      "label": "Bait phrases",
+      "description": "“you won’t believe”, “gone wrong”…"
+    },
+    {
+      "id": "shouting",
+      "label": "ALL CAPS & !!!",
+      "description": "Shouty titles"
+    },
+    {
+      "id": "emoji-spam",
+      "label": "Emoji spam",
+      "description": "Titles stuffed with emoji"
+    },
+    {
+      "id": "sensational",
+      "label": "Sensational words",
+      "description": "“shocking”, “destroyed”, “exposed”…"
+    },
+    {
+      "id": "ai-slop",
+      "label": "Known AI-generated channels",
+      "description": "Channels identified as mass-produced AI content"
+    }
+  ],
+  "rules": [
+    {
+      "id": "caps-title",
+      "category": "shouting",
+      "type": "capsRatio",
+      "min": 0.6,
+      "minLetters": 12,
+      "weight": 2,
+      "label": "ALL CAPS title"
+    },
+    {
+      "id": "punct-run",
+      "category": "shouting",
+      "type": "punctuationRun",
+      "min": 3,
+      "weight": 1,
+      "label": "Excessive !!! / ???"
+    },
+    {
+      "id": "emoji-spam",
+      "category": "emoji-spam",
+      "type": "emojiCount",
+      "min": 3,
+      "weight": 1,
+      "label": "Emoji spam"
+    },
+    {
+      "id": "gone-wrong",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bgone wrong\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “gone wrong”"
+    },
+    {
+      "id": "you-wont-believe",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\byou won'?t believe\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “you won't believe”"
+    },
+    {
+      "id": "not-clickbait",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\(?not clickbait\\)?",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “(not clickbait)”"
+    },
+    {
+      "id": "tried-24-hours",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bI tried (?:.+ )?for 24 hours\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Bait phrase: “I tried X for 24 hours”"
+    },
+    {
+      "id": "changes-everything",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bthis changes everything\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “this changes everything”"
+    },
+    {
+      "id": "watch-before-deleted",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bwatch before (?:it's|it is) deleted\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “watch before it's deleted”"
+    },
+    {
+      "id": "they-dont-want-you-to-know",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bthey don'?t want you to know\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “they don't want you to know”"
+    },
+    {
+      "id": "what-happens-next",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bwhat happens next\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Bait phrase: “what happens next”"
+    },
+    {
+      "id": "number-will-shock-you",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\b(?:number \\d+|#\\d+) will shock you\\b",
+      "flags": "i",
+      "weight": 3,
+      "label": "Bait phrase: “#X will shock you”"
+    },
+    {
+      "id": "the-secret-to",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bthe secret to\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Bait phrase: “the secret to”"
+    },
+    {
+      "id": "stop-doing-this",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\bstop doing this\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Bait phrase: “stop doing this”"
+    },
+    {
+      "id": "dont-buy",
+      "category": "bait-phrase",
+      "type": "regex",
+      "pattern": "\\b(?:do not|don'?t) buy\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Bait phrase: “don't buy”"
+    },
+    {
+      "id": "sensational-shocking",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\b(?:shocking|shocked)\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational word: “shocking”"
+    },
+    {
+      "id": "sensational-destroyed",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\b(?:destroyed|destroys)\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational word: “destroyed”"
+    },
+    {
+      "id": "sensational-exposed",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\b(?:exposed|exposes)\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational word: “exposed”"
+    },
+    {
+      "id": "sensational-insane",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\binsane\\b",
+      "flags": "i",
+      "weight": 1,
+      "label": "Sensational word: “insane”"
+    },
+    {
+      "id": "sensational-unbelievable",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\bunbelievable\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational word: “unbelievable”"
+    },
+    {
+      "id": "sensational-mindblowing",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\bmind-?blowing\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational word: “mind-blowing”"
+    },
+    {
+      "id": "sensational-never-seen-before",
+      "category": "sensational",
+      "type": "regex",
+      "pattern": "\\bnever seen before\\b",
+      "flags": "i",
+      "weight": 2,
+      "label": "Sensational phrase: “never seen before”"
+    },
+    {
+      "id": "slop-channels",
+      "category": "ai-slop",
+      "type": "channel",
+      "handles": ["@example-slop-channel"],
+      "weight": 5,
+      "label": "Known AI-generated channel"
+    }
+  ]
+}

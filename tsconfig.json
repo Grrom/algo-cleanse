@@ -8,5 +8,11 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["entrypoints/**/*", "src/**/*", "tests/**/*", ".wxt/types/**/*"]
+  "include": [
+    "entrypoints/**/*",
+    "src/**/*",
+    "tests/**/*",
+    ".wxt/types/**/*",
+    "scripts/**/*"
+  ]
 }
