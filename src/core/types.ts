@@ -32,3 +32,17 @@ export const DEFAULT_SETTINGS: Settings = {
   blockedChannels: [],
   allowedChannels: [],
 };
+
+export type {
+  Category,
+  ChannelRule,
+  EmojiCountRule,
+  PatternCategory,
+  PatternRule,
+  Patterns,
+  PunctuationRunRule,
+  RegexRule,
+  Rule,
+  StrictnessThresholds,
+  Thresholds,
+} from './patterns-schema';
