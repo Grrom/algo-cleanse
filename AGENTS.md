@@ -17,6 +17,7 @@
 - `npm run build:firefox`: Build extension for Firefox MV3 (`.output/firefox-mv3`).
 - `npm run zip`: Package Chrome extension zip into `.output/`.
 - `npm run zip:firefox`: Package Firefox extension zip and sources zip into `.output/`.
+- `npm run release`: Package Chrome extension zip, Firefox extension zip, and Firefox sources zip into `.output/`.
 - `npm run lint`: Run ESLint and Prettier checks.
 - `npm run format`: Format files using Prettier.
 - `npm run typecheck`: Run TypeScript compiler check without emitting files (`tsc --noEmit`).
