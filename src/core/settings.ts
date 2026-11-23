@@ -89,7 +89,10 @@ export function mergeSettings(stored?: unknown): Settings {
   return result;
 }
 
-const getBrowser = (): typeof browser => (globalThis as any).browser ?? browser;
+const getBrowser = (): typeof browser => {
+  const g = globalThis as unknown as { browser?: typeof browser };
+  return g.browser ?? browser;
+};
 
 /**
  * Reads browser.storage.sync key settings, merging over DEFAULT_SETTINGS (unknown keys dropped).
@@ -124,20 +127,19 @@ export type SettingsCallback = (settings: Settings) => void;
  */
 export function watchSettings(callback: SettingsCallback): () => void {
   const b = getBrowser();
-  const listener = (
-    changes: Record<string, { oldValue?: unknown; newValue?: unknown }>,
-    areaName: string,
-  ) => {
+  const listener: Parameters<
+    typeof browser.storage.onChanged.addListener
+  >[0] = (changes, areaName) => {
     if ((areaName === 'sync' || !areaName) && SETTINGS_KEY in changes) {
       const change = changes[SETTINGS_KEY];
       callback(mergeSettings(change?.newValue));
     }
   };
 
-  b.storage.onChanged.addListener(listener as any);
+  b.storage.onChanged.addListener(listener);
 
   return () => {
-    b.storage.onChanged.removeListener(listener as any);
+    b.storage.onChanged.removeListener(listener);
   };
 }
 

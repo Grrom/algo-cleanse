@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fakeBrowser } from 'wxt/testing';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   allowChannel,
   blockChannel,
@@ -11,6 +11,9 @@ import {
   watchSettings,
 } from '../../src/core/settings';
 import { DEFAULT_SETTINGS, type Settings } from '../../src/core/types';
+
+(globalThis as unknown as { browser: typeof fakeBrowser }).browser =
+  fakeBrowser;
 
 describe('Settings storage with defaults and change subscription', () => {
   beforeEach(() => {
@@ -56,7 +59,7 @@ describe('Settings storage with defaults and change subscription', () => {
     expect('unknownKey' in mergedSettings).toBe(false);
     expect('extraField' in mergedSettings).toBe(false);
     expect(
-      (mergedSettings as Record<string, unknown>).unknownKey,
+      (mergedSettings as unknown as Record<string, unknown>).unknownKey,
     ).toBeUndefined();
   });
 
@@ -160,8 +163,8 @@ describe('Settings storage with defaults and change subscription', () => {
 
     await updateSettings({ enabled: false, strictness: 'strict' });
     expect(received).toHaveLength(1);
-    expect(received[0].enabled).toBe(false);
-    expect(received[0].strictness).toBe('strict');
+    expect(received[0]?.enabled).toBe(false);
+    expect(received[0]?.strictness).toBe('strict');
 
     unsubscribe();
 
