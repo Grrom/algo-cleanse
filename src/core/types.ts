@@ -46,3 +46,4 @@ export type {
   StrictnessThresholds,
   Thresholds,
 } from './patterns-schema';
+export type { Verdict, VerdictSource } from './engine';
