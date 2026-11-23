@@ -6,3 +6,4 @@ build
 .icarus/notes.md
 .DS_Store
 *.zip
+.wrangler

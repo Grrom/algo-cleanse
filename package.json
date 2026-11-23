@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "patterns:check": "jiti scripts/check-patterns.ts",
     "test": "vitest run",
+    "test:worker": "npm test --prefix worker",
     "test:coverage": "vitest run --coverage",
     "postinstall": "wxt prepare"
   },
