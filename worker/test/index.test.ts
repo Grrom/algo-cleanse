@@ -35,17 +35,17 @@ function createMockD1() {
           if (query.trim().startsWith('INSERT INTO feedback')) {
             const row: MockFeedbackRow = {
               id: nextId++,
-              received_at: boundArgs[0],
-              kind: boundArgs[1],
-              video_id: boundArgs[2],
-              title: boundArgs[3],
-              channel_handle: boundArgs[4],
-              matched_rule_ids: boundArgs[5],
-              score: boundArgs[6],
-              strictness: boundArgs[7],
-              patterns_revision: boundArgs[8],
-              extension_version: boundArgs[9],
-              browser: boundArgs[10],
+              received_at: String(boundArgs[0]),
+              kind: String(boundArgs[1]),
+              video_id: String(boundArgs[2]),
+              title: String(boundArgs[3]),
+              channel_handle: boundArgs[4] ? String(boundArgs[4]) : null,
+              matched_rule_ids: String(boundArgs[5]),
+              score: Number(boundArgs[6]),
+              strictness: String(boundArgs[7]),
+              patterns_revision: Number(boundArgs[8]),
+              extension_version: String(boundArgs[9]),
+              browser: String(boundArgs[10]),
             };
             rows.push(row);
             return { success: true, meta: { changes: 1 } };
