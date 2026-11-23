@@ -2,6 +2,32 @@ import type { VideoInfo } from '../../core/types';
 import { SELECTORS } from './selectors';
 
 /**
+ * Queries the first matching element using a list of selectors in priority order.
+ * Unlike a comma-separated selector string which returns whichever matches earliest in document order,
+ * this checks selectors sequentially so high-priority specific selectors take precedence over broader ancestors.
+ */
+function queryFirst(el: Element, selectors: readonly string[]): Element | null {
+  for (const selector of selectors) {
+    const match = el.querySelector(selector);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+/**
+ * Safely decodes a URI component without throwing on malformed percent encoding.
+ */
+function safeDecode(val: string): string {
+  try {
+    return decodeURIComponent(val);
+  } catch {
+    return val;
+  }
+}
+
+/**
  * Extracts VideoInfo from a YouTube video tile Element.
  * Returns null if no valid videoId is found.
  */
@@ -23,10 +49,10 @@ export function extractVideo(tile: Element): VideoInfo | null {
   let videoId: string | null = null;
   let isShort = false;
 
-  // Check for shorts container match on tile or ancestor
+  // Check for shorts shelf/tile container match on tile or ancestor (without :has)
   if (
-    tile.matches(SELECTORS.shorts) ||
-    Boolean(tile.closest(SELECTORS.shorts))
+    tile.matches(SELECTORS.shortsContainerSelector) ||
+    Boolean(tile.closest(SELECTORS.shortsContainerSelector))
   ) {
     isShort = true;
   }
@@ -63,8 +89,8 @@ export function extractVideo(tile: Element): VideoInfo | null {
     return null;
   }
 
-  // Extract video title from title element attribute or trimmed text
-  const titleEl = tile.querySelector(SELECTORS.title);
+  // Extract video title from prioritized title element attribute or trimmed text
+  const titleEl = queryFirst(tile, SELECTORS.title);
   let title: string | null = null;
   if (titleEl) {
     const attrTitle =
@@ -89,28 +115,28 @@ export function extractVideo(tile: Element): VideoInfo | null {
         if (url.pathname.startsWith('/@')) {
           const handle = url.pathname.slice(1).split('/')[0];
           if (handle) {
-            channelHandle = handle.toLowerCase();
+            channelHandle = safeDecode(handle).toLowerCase();
           }
         }
       } catch {
         const match = handleHref.match(/\/@([^/?#]+)/);
         if (match && match[1]) {
-          channelHandle = `@${match[1]}`.toLowerCase();
+          channelHandle = safeDecode(`@${match[1]}`).toLowerCase();
         }
       }
     }
   }
 
-  // Extract channel display name
-  const channelNameEl = tile.querySelector(SELECTORS.channelName);
+  // Extract channel display name using prioritized selectors
+  const channelNameEl = queryFirst(tile, SELECTORS.channelName);
   let channelName: string | null = null;
   if (channelNameEl) {
     const textName = channelNameEl.textContent?.trim();
     channelName = textName ? textName : null;
   }
 
-  // Extract duration text
-  const durationEl = tile.querySelector(SELECTORS.duration);
+  // Extract duration text using prioritized selectors
+  const durationEl = queryFirst(tile, SELECTORS.duration);
   let durationText: string | null = null;
   if (durationEl) {
     const textDuration = durationEl.textContent?.trim();

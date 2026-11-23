@@ -5,6 +5,38 @@ import { SELECTORS } from './selectors';
 export type OnTileCallback = (tile: Element, video: VideoInfo) => void;
 
 /**
+ * Fast check to test if a tile's video link href still points to the same videoId.
+ * Avoids executing expensive DOM queries and string extractions on unmutated tiles.
+ */
+function quickMatchesVideoId(href: string, videoId: string): boolean {
+  const watchPattern = `v=${videoId}`;
+  const watchIdx = href.indexOf(watchPattern);
+  if (watchIdx !== -1) {
+    const nextChar = href.charAt(watchIdx + watchPattern.length);
+    if (!nextChar || nextChar === '&' || nextChar === '#' || nextChar === '?') {
+      return true;
+    }
+  }
+
+  const shortsPattern = `/shorts/${videoId}`;
+  const shortsIdx = href.indexOf(shortsPattern);
+  if (shortsIdx !== -1) {
+    const nextChar = href.charAt(shortsIdx + shortsPattern.length);
+    if (
+      !nextChar ||
+      nextChar === '/' ||
+      nextChar === '?' ||
+      nextChar === '#' ||
+      nextChar === '&'
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Starts scanning for video tiles on YouTube pages.
  * - Single MutationObserver on document.body
  * - Batched with requestAnimationFrame
@@ -27,12 +59,25 @@ export function startScanner(onTile: OnTileCallback): () => void {
         continue;
       }
 
+      const lastVideoId = tile.getAttribute(SELECTORS.videoIdAttr);
+      if (lastVideoId) {
+        // Cheap check: if video link href hasn't changed, skip expensive full extraction
+        const linkEl = tile.matches(SELECTORS.videoLink)
+          ? tile
+          : tile.querySelector(SELECTORS.videoLink);
+        if (linkEl) {
+          const href = linkEl.getAttribute('href');
+          if (href && quickMatchesVideoId(href, lastVideoId)) {
+            continue;
+          }
+        }
+      }
+
       const video = extractVideo(tile);
       if (!video) {
         continue;
       }
 
-      const lastVideoId = tile.getAttribute(SELECTORS.videoIdAttr);
       if (lastVideoId === video.videoId) {
         // Already processed for this videoId
         continue;

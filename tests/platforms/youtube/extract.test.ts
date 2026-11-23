@@ -102,4 +102,46 @@ describe('extractVideo', () => {
     expect(malformedShortsRes?.videoId).toBe('regexShort123');
     expect(malformedShortsRes?.isShort).toBe(true);
   });
+
+  it('prioritizes specific title element over ancestor h3 containing badge text', () => {
+    const tile = document.createElement('div');
+    tile.innerHTML = `
+      <h3>
+        <span class="badge">LIVE</span>
+        <a id="video-title-link" title="Real Title" href="/watch?v=liveVid1">Real Title</a>
+      </h3>
+    `;
+    const res = extractVideo(tile);
+    expect(res).not.toBeNull();
+    expect(res?.title).toBe('Real Title');
+  });
+
+  it('prioritizes inner #text element over outer container with duplicate tooltip text for channelName', () => {
+    const tile = document.createElement('div');
+    tile.innerHTML = `
+      <a href="/watch?v=channelVid1">
+        <span id="video-title">Sample Video</span>
+      </a>
+      <ytd-channel-name>
+        <div id="text">Dev</div>
+        <div class="tooltip">Dev</div>
+      </ytd-channel-name>
+    `;
+    const res = extractVideo(tile);
+    expect(res).not.toBeNull();
+    expect(res?.channelName).toBe('Dev');
+  });
+
+  it('decodes percent-encoded channel handles and lowercases them', () => {
+    const tile = document.createElement('div');
+    tile.innerHTML = `
+      <a href="/watch?v=cafeVid1">
+        <span id="video-title">Cafe Video</span>
+      </a>
+      <a href="/@Caf%C3%A9/videos">Cafe Channel</a>
+    `;
+    const res = extractVideo(tile);
+    expect(res).not.toBeNull();
+    expect(res?.channelHandle).toBe('@café');
+  });
 });

@@ -11,6 +11,7 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: 'algo-cleanse@grrom',
+        strict_min_version: '121.0',
       },
     },
   },

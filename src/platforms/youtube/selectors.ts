@@ -39,18 +39,40 @@ export const TILE_SELECTOR = [...TILE_RENDERERS, ...SHORTS_RENDERERS].join(
 export const TILE_SELECTORS = TILE_SELECTOR;
 
 /**
+ * Shorts shelf and tile containers to detect or hide (free of :has pseudo-class
+ * to prevent DOM querySelector exceptions in older browser engines).
+ */
+export const SHORTS_CONTAINER_SELECTORS = [
+  'ytd-reel-shelf-renderer',
+  'ytd-rich-shelf-renderer[is-shorts]',
+  'ytm-shorts-lockup-view-model',
+  'ytd-reel-item-renderer',
+] as const;
+
+export const SHORTS_CONTAINER_SELECTOR = SHORTS_CONTAINER_SELECTORS.join(', ');
+
+/**
+ * Shorts navigation entries in the sidebar / mini-guide.
+ * Matches by URL path (/shorts) instead of localized English label text.
+ */
+export const SHORTS_GUIDE_SELECTORS = [
+  'ytd-guide-entry-renderer:has(a[href^="/shorts"])',
+  'ytd-mini-guide-entry-renderer:has(a[href^="/shorts"])',
+] as const;
+
+/**
  * Shorts containers to hide or detect:
  * - ytd-reel-shelf-renderer: Shorts carousel / shelf on subscriptions & search
  * - ytd-rich-shelf-renderer[is-shorts]: Shorts shelf grid on the home feed
  * - ytm-shorts-lockup-view-model: individual Shorts lockup view model
- * - ytd-guide-entry-renderer / ytd-mini-guide-entry-renderer: Shorts navigation entries in sidebar
+ * - Shorts guide navigation entries in sidebar matching href="/shorts"
  */
 export const SHORTS_SELECTORS = [
   'ytd-reel-shelf-renderer',
   'ytd-rich-shelf-renderer[is-shorts]',
   'ytm-shorts-lockup-view-model',
-  'ytd-guide-entry-renderer:has(a[title="Shorts"])',
-  'ytd-mini-guide-entry-renderer[aria-label="Shorts"]',
+  'ytd-guide-entry-renderer:has(a[href^="/shorts"])',
+  'ytd-mini-guide-entry-renderer:has(a[href^="/shorts"])',
 ] as const;
 
 /**
@@ -59,10 +81,20 @@ export const SHORTS_SELECTORS = [
 export const SHORTS_SELECTOR = SHORTS_SELECTORS.join(', ');
 
 /**
- * The tile's three-dot action menu button (⋮).
+ * The tile's three-dot action menu button (⋮) selectors in priority order.
+ * Structural button selectors take precedence so the actual <button> element is returned
+ * rather than an outer custom element wrapper (e.g. yt-icon-button), without relying on
+ * localized English aria-label text.
  */
-export const TILE_MENU_BUTTON =
-  'button[aria-label="More actions"], button[aria-label="Action menu"], ytd-menu-renderer yt-icon-button button, yt-icon-button#button, .yt-lockup-view-model-wiz__menu button' as const;
+export const TILE_MENU_BUTTON_SELECTORS = [
+  'ytd-menu-renderer button',
+  '.yt-lockup-view-model-wiz__menu button',
+  'yt-icon-button button',
+  'button[aria-label="Action menu"]',
+  'button[aria-label="More actions"]',
+] as const;
+
+export const TILE_MENU_BUTTON = TILE_MENU_BUTTON_SELECTORS.join(', ');
 
 /**
  * Links pointing to a video (/watch?v=) or Short (/shorts/).
@@ -70,10 +102,19 @@ export const TILE_MENU_BUTTON =
 export const VIDEO_LINK = 'a[href*="/watch?v="], a[href*="/shorts/"]' as const;
 
 /**
- * Video title element inside a tile.
+ * Video title selectors in priority order.
+ * More specific title link and title elements (#video-title-link, #video-title)
+ * must be evaluated before generic container elements (h3, h3 a) so that ancestor
+ * elements containing badge/live text are not selected first in document order.
  */
-export const VIDEO_TITLE =
-  '#video-title-link, #video-title, .yt-lockup-view-model-wiz__title a, .yt-lockup-view-model-wiz__title, h3 a, h3' as const;
+export const VIDEO_TITLE = [
+  '#video-title-link',
+  '#video-title',
+  '.yt-lockup-view-model-wiz__title a',
+  '.yt-lockup-view-model-wiz__title',
+  'h3 a',
+  'h3',
+] as const;
 
 /**
  * Channel handle link (e.g. href="/@channelhandle").
@@ -81,16 +122,30 @@ export const VIDEO_TITLE =
 export const CHANNEL_HANDLE = 'a[href^="/@"]' as const;
 
 /**
- * Channel display name element.
+ * Channel display name selectors in priority order.
+ * Specific inner text elements (#text) take precedence over outer containers
+ * (ytd-channel-name) to avoid including tooltip text in the extracted channel name.
  */
-export const CHANNEL_NAME =
-  'ytd-channel-name #text, .yt-lockup-view-model-wiz__subhead a, .yt-lockup-view-model-wiz__subhead, #channel-name #text, #channel-name, ytd-channel-name, a[href^="/@"]' as const;
+export const CHANNEL_NAME = [
+  'ytd-channel-name #text',
+  '#channel-name #text',
+  '.yt-lockup-view-model-wiz__subhead a',
+  '.yt-lockup-view-model-wiz__subhead',
+  'ytd-channel-name',
+  '#channel-name',
+  'a[href^="/@"]',
+] as const;
 
 /**
- * Video duration badge / text overlay.
+ * Video duration badge / text overlay selectors in priority order.
  */
-export const VIDEO_DURATION =
-  'ytd-thumbnail-overlay-time-status-renderer #text, span.ytd-thumbnail-overlay-time-status-renderer, .badge-shape-wiz__text, #time-status #text, ytd-thumbnail-overlay-time-status-renderer' as const;
+export const VIDEO_DURATION = [
+  'ytd-thumbnail-overlay-time-status-renderer #text',
+  'span.ytd-thumbnail-overlay-time-status-renderer',
+  '.badge-shape-wiz__text',
+  '#time-status #text',
+  'ytd-thumbnail-overlay-time-status-renderer',
+] as const;
 
 /**
  * Attribute name used to store processed videoId on recycled tile elements.
@@ -115,9 +170,12 @@ export const SELECTORS = {
   shortsRenderers: SHORTS_RENDERERS,
   tile: TILE_SELECTOR,
   tileSelectors: TILE_SELECTORS,
-  shortsContainers: SHORTS_SELECTORS,
+  shortsContainers: SHORTS_CONTAINER_SELECTORS,
+  shortsContainerSelector: SHORTS_CONTAINER_SELECTOR,
+  shortsShelves: SHORTS_SELECTORS,
   shorts: SHORTS_SELECTOR,
   tileMenuButton: TILE_MENU_BUTTON,
+  tileMenuButtonSelectors: TILE_MENU_BUTTON_SELECTORS,
   videoLink: VIDEO_LINK,
   title: VIDEO_TITLE,
   channelHandle: CHANNEL_HANDLE,
