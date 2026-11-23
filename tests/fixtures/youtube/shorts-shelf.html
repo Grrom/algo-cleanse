@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Shorts Shelf Fixture</title>
+  </head>
+  <body>
+    <ytd-app>
+      <!-- Left Navigation Guide Entries -->
+      <div id="guide">
+        <ytd-guide-renderer>
+          <ytd-guide-section-renderer>
+            <div id="items">
+              <ytd-guide-entry-renderer>
+                <a id="endpoint" title="Shorts" href="/shorts">
+                  <span class="title">Shorts</span>
+                </a>
+              </ytd-guide-entry-renderer>
+            </div>
+          </ytd-guide-section-renderer>
+        </ytd-guide-renderer>
+      </div>
+      <div id="mini-guide">
+        <ytd-mini-guide-renderer>
+          <ytd-mini-guide-entry-renderer aria-label="Shorts">
+            <a href="/shorts">
+              <span class="title">Shorts</span>
+            </a>
+          </ytd-mini-guide-entry-renderer>
+        </ytd-mini-guide-renderer>
+      </div>
+
+      <!-- Main Content Area with Shorts Shelf -->
+      <div id="content">
+        <ytd-page-manager>
+          <ytd-browse>
+            <ytd-rich-shelf-renderer
+              is-shorts
+              class="style-scope ytd-rich-grid-renderer"
+            >
+              <div id="dismissible">
+                <div id="contents">
+                  <ytd-reel-shelf-renderer>
+                    <div id="items">
+                      <!-- Shorts Tile 1 -->
+                      <ytm-shorts-lockup-view-model
+                        class="ytm-shorts-lockup-view-model"
+                      >
+                        <a
+                          href="/shorts/shortVid001"
+                          title="Quick Python Trick You Never Knew #shorts"
+                        >
+                          <h3 class="shorts-title">
+                            Quick Python Trick You Never Knew #shorts
+                          </h3>
+                        </a>
+                        <div class="shorts-channel">
+                          <a href="/@QuickCoder">Quick Coder</a>
+                        </div>
+                        <div class="shorts-menu">
+                          <button aria-label="More actions">⋮</button>
+                        </div>
+                      </ytm-shorts-lockup-view-model>
+
+                      <!-- Shorts Tile 2 -->
+                      <ytm-shorts-lockup-view-model
+                        class="ytm-shorts-lockup-view-model"
+                      >
+                        <a
+                          href="/shorts/shortVid002"
+                          title="CSS One-Liner That Replaces 50 Lines of JS"
+                        >
+                          <h3 class="shorts-title">
+                            CSS One-Liner That Replaces 50 Lines of JS
+                          </h3>
+                        </a>
+                        <div class="shorts-channel">
+                          <a href="/@WebDevDaily">Web Dev Daily</a>
+                        </div>
+                        <div class="shorts-menu">
+                          <button aria-label="Action menu">⋮</button>
+                        </div>
+                      </ytm-shorts-lockup-view-model>
+                    </div>
+                  </ytd-reel-shelf-renderer>
+                </div>
+              </div>
+            </ytd-rich-shelf-renderer>
+          </ytd-browse>
+        </ytd-page-manager>
+      </div>
+    </ytd-app>
+  </body>
+</html>
