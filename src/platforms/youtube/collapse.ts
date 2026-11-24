@@ -604,6 +604,12 @@ export function collapseTile(
       existingChips.every((r, idx) => r === verdict.reasons[idx]);
 
     if (reasonsEqual) {
+      if (verdict.source !== 'patterns') {
+        const notInterestedBtn = existingCard.querySelector(
+          SELECTORS.notInterestedAction,
+        );
+        notInterestedBtn?.remove();
+      }
       updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();
       return existingCard as HTMLElement;
@@ -618,6 +624,12 @@ export function collapseTile(
         chip.setAttribute(SELECTORS.chipAttr, '');
         chip.textContent = reason;
         chipsContainer.appendChild(chip);
+      }
+      if (verdict.source !== 'patterns') {
+        const notInterestedBtn = existingCard.querySelector(
+          SELECTORS.notInterestedAction,
+        );
+        notInterestedBtn?.remove();
       }
       updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();

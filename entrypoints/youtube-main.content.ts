@@ -113,11 +113,13 @@ export function findMenuDataFromElement(
 }
 
 export function classifyMenuItem(
-  itemData: MenuItemData | undefined,
+  itemData: MenuItemData | Record<string, unknown> | undefined,
 ): 'not-interested' | 'dont-recommend' | null {
   if (!itemData) return null;
-  const serviceItem = itemData.menuServiceItemRenderer ?? itemData;
-  const iconType: string = serviceItem?.icon?.iconType ?? '';
+  const serviceItem = unwrapMenuItemData(itemData);
+  if (!serviceItem) return null;
+  const icon = serviceItem.icon as { iconType?: string } | undefined;
+  const iconType: string = icon?.iconType ?? '';
 
   if (iconType === 'NOT_INTERESTED' || iconType.includes('NOT_INTERESTED')) {
     return 'not-interested';
@@ -135,6 +137,32 @@ export function classifyMenuItem(
   }
 
   return null;
+}
+
+export function unwrapMenuItemData(
+  itemData: unknown,
+): Record<string, unknown> | undefined {
+  if (!itemData || typeof itemData !== 'object') {
+    return undefined;
+  }
+  const obj = itemData as Record<string, unknown>;
+  const keys = Object.keys(obj);
+  const rendererKey = keys.find((k) => k.endsWith('Renderer'));
+  if (
+    rendererKey &&
+    typeof obj[rendererKey] === 'object' &&
+    obj[rendererKey] !== null
+  ) {
+    return obj[rendererKey] as Record<string, unknown>;
+  }
+  if (
+    keys.length === 1 &&
+    typeof obj[keys[0]!] === 'object' &&
+    obj[keys[0]!] !== null
+  ) {
+    return obj[keys[0]!] as Record<string, unknown>;
+  }
+  return obj;
 }
 
 /**
@@ -182,7 +210,8 @@ export function getTopLevelMenuItems(popup: Element): Element[] {
 /**
  * Validates that the items in the open popup belong to this tile by comparing
  * each item's renderer data against findMenuDataFromElement(tile):
- * same length, and same iconType at each index, or object identity with items[i].menuServiceItemRenderer.
+ * same length, and where both sides carry feedbackToken, comparing tokens,
+ * otherwise matching iconType or object identity.
  */
 export function doPopupItemsMatchTile(
   popupItems: Element[],
@@ -199,31 +228,54 @@ export function doPopupItemsMatchTile(
     const itemEl = popupItems[i]!;
     const anyItem = itemEl as unknown as Record<string, unknown>;
     const popupItemData = (anyItem.data ?? anyItem.__data) as
-      MenuItemData | undefined;
+      | MenuItemData
+      | Record<string, unknown>
+      | undefined;
     const tileItemData = tileMenuItems[i]!;
 
     if (!popupItemData) {
       return false;
     }
 
-    // Check object identity
+    const unwrappedPopup = unwrapMenuItemData(popupItemData);
+    const unwrappedTile = unwrapMenuItemData(tileItemData);
+
+    // Check object identity (raw or unwrapped)
     if (
       popupItemData === tileItemData ||
-      (popupItemData.menuServiceItemRenderer &&
-        popupItemData.menuServiceItemRenderer ===
-          tileItemData.menuServiceItemRenderer) ||
-      popupItemData === tileItemData.menuServiceItemRenderer ||
-      popupItemData.menuServiceItemRenderer === tileItemData
+      (unwrappedPopup && unwrappedTile && unwrappedPopup === unwrappedTile) ||
+      popupItemData === unwrappedTile ||
+      tileItemData === unwrappedPopup
     ) {
       continue;
     }
 
-    // Compare iconType
-    const popupService = popupItemData.menuServiceItemRenderer ?? popupItemData;
-    const tileService = tileItemData.menuServiceItemRenderer ?? tileItemData;
+    // Where both sides carry a serviceEndpoint.feedbackEndpoint.feedbackToken, compare tokens
+    const popupToken = (
+      unwrappedPopup?.serviceEndpoint as
+        | { feedbackEndpoint?: { feedbackToken?: string } }
+        | undefined
+    )?.feedbackEndpoint?.feedbackToken;
+    const tileToken = (
+      unwrappedTile?.serviceEndpoint as
+        | { feedbackEndpoint?: { feedbackToken?: string } }
+        | undefined
+    )?.feedbackEndpoint?.feedbackToken;
 
-    const popupIcon = popupService?.icon?.iconType;
-    const tileIcon = tileService?.icon?.iconType;
+    if (popupToken && tileToken) {
+      if (popupToken === tileToken) {
+        continue;
+      }
+      return false;
+    }
+
+    // Fall back to iconType only for items without one
+    const popupIcon = (
+      unwrappedPopup?.icon as { iconType?: string } | undefined
+    )?.iconType;
+    const tileIcon = (
+      unwrappedTile?.icon as { iconType?: string } | undefined
+    )?.iconType;
 
     if (popupIcon && tileIcon && popupIcon === tileIcon) {
       continue;
@@ -262,9 +314,7 @@ export function tagMenuElements(root: Document | Element = document): void {
 }
 
 export function resolveMenuForTile(resolveId: string): void {
-  const tile = document.querySelector(
-    `[${SELECTORS.resolveIdAttr}="${resolveId}"]`,
-  );
+  const tile = document.querySelector(SELECTORS.resolvedPopup(resolveId));
   const tileMenuItems = tile ? findMenuDataFromElement(tile) : null;
 
   const dispatchResult = (status: 'ok' | 'timeout') => {
@@ -286,6 +336,7 @@ export function resolveMenuForTile(resolveId: string): void {
       return false;
     }
 
+    popup.setAttribute(SELECTORS.resolveIdAttr, resolveId);
     tagMenuElements(popup);
     return true;
   };

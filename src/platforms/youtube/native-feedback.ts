@@ -158,8 +158,10 @@ async function sendFeedbackAction(
       return 'unavailable';
     }
 
-    // 5. Query open popup container
-    const openPopup = document.querySelector(SELECTORS.openMenuPopup);
+    // 5. Query open popup container stamped with resolveId by MAIN world script
+    const openPopup =
+      document.querySelector(SELECTORS.resolvedPopup(resolveId)) ??
+      document.querySelector(SELECTORS.openMenuPopup);
     if (!openPopup) {
       closeLeftoverPopups();
       return 'unavailable';
@@ -201,6 +203,10 @@ async function sendFeedbackAction(
     return 'failed';
   } finally {
     tile.removeAttribute(SELECTORS.resolveIdAttr);
+    const stampedPopup = document.querySelector(
+      SELECTORS.resolvedPopup(resolveId),
+    );
+    stampedPopup?.removeAttribute(SELECTORS.resolveIdAttr);
     if (wasCollapsed) {
       tile.classList.remove('ac-menu-operating');
     }

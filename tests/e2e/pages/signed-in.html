@@ -1,0 +1,201 @@
+<!--
+  YouTube Signed-in E2E Fixture Page
+  Contains clickbait tile, masthead with avatar button (#avatar-btn),
+  and popup container with dropdown and menu items.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Signed In E2E Fixture</title>
+    <style>
+      ytd-app,
+      ytd-page-manager,
+      ytd-browse,
+      ytd-two-column-browse-results-renderer,
+      ytd-rich-grid-renderer,
+      ytd-rich-item-renderer,
+      ytd-rich-shelf-renderer,
+      ytd-reel-shelf-renderer,
+      ytd-video-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytd-masthead,
+      ytd-popup-container,
+      tp-yt-iron-dropdown,
+      ytd-menu-popup-renderer,
+      ytd-menu-service-item-renderer {
+        display: block;
+      }
+      ytd-rich-item-renderer {
+        width: 360px;
+        margin: 16px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <ytd-app>
+      <ytd-masthead id="masthead">
+        <button id="avatar-btn" aria-label="Account avatar"></button>
+      </ytd-masthead>
+      <div id="content">
+        <ytd-page-manager>
+          <ytd-browse>
+            <ytd-two-column-browse-results-renderer>
+              <div id="primary">
+                <ytd-rich-grid-renderer>
+                  <div id="contents">
+                    <!-- Video Tile: Clickbait Rich Item Renderer -->
+                    <ytd-rich-item-renderer
+                      class="style-scope ytd-rich-grid-row"
+                      id="clickbait-tile"
+                    >
+                      <div id="content">
+                        <ytd-rich-grid-media>
+                          <div id="thumbnail">
+                            <a
+                              id="thumbnail"
+                              class="yt-simple-endpoint inline-block style-scope ytd-thumbnail"
+                              href="/watch?v=clickbait001"
+                            >
+                              <span
+                                class="ytd-thumbnail-overlay-time-status-renderer"
+                                >18:02</span
+                              >
+                            </a>
+                          </div>
+                          <div id="details">
+                            <div id="meta">
+                              <h3 class="style-scope ytd-rich-grid-media">
+                                <a
+                                  id="video-title-link"
+                                  class="yt-simple-endpoint style-scope ytd-rich-grid-media"
+                                  title="I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG) 😱😱😱!!!"
+                                  href="/watch?v=clickbait001"
+                                >
+                                  <yt-formatted-string id="video-title"
+                                    >I SPENT 24 HOURS IN AN ABANDONED BUNKER
+                                    (GONE WRONG) 😱😱😱!!!</yt-formatted-string
+                                  >
+                                </a>
+                              </h3>
+                              <div id="channel-info">
+                                <ytd-channel-name id="channel-name">
+                                  <div id="container">
+                                    <div id="text-container">
+                                      <yt-formatted-string
+                                        id="text"
+                                        title="Extreme Vlogs"
+                                      >
+                                        <a
+                                          class="yt-simple-endpoint style-scope yt-formatted-string"
+                                          href="/@ExtremeVlogs"
+                                          >Extreme Vlogs</a
+                                        >
+                                      </yt-formatted-string>
+                                    </div>
+                                  </div>
+                                </ytd-channel-name>
+                              </div>
+                            </div>
+                            <div id="menu">
+                              <ytd-menu-renderer>
+                                <yt-icon-button id="button">
+                                  <button aria-label="Action menu">⋮</button>
+                                </yt-icon-button>
+                              </ytd-menu-renderer>
+                            </div>
+                          </div>
+                        </ytd-rich-grid-media>
+                      </div>
+                    </ytd-rich-item-renderer>
+                  </div>
+                </ytd-rich-grid-renderer>
+              </div>
+            </ytd-two-column-browse-results-renderer>
+          </ytd-browse>
+        </ytd-page-manager>
+      </div>
+      <ytd-popup-container>
+        <tp-yt-iron-dropdown aria-hidden="true">
+          <ytd-menu-popup-renderer>
+            <div id="items"></div>
+          </ytd-menu-popup-renderer>
+        </tp-yt-iron-dropdown>
+      </ytd-popup-container>
+    </ytd-app>
+
+    <script>
+      (function () {
+        const tile = document.getElementById('clickbait-tile');
+        const shareItem = {
+          menuServiceItemRenderer: {
+            icon: { iconType: 'SHARE' },
+            text: { runs: [{ text: 'Partager' }] },
+            serviceEndpoint: {
+              shareEntityServiceEndpoint: {
+                serializedShareEntity: 'share_001',
+              },
+            },
+          },
+        };
+        const notInterestedItem = {
+          menuServiceItemRenderer: {
+            icon: { iconType: 'NOT_INTERESTED' },
+            text: { runs: [{ text: 'Pas intéressé' }] },
+            serviceEndpoint: {
+              feedbackEndpoint: {
+                feedbackToken: 'token_not_interested_001',
+              },
+            },
+          },
+        };
+
+        tile.data = {
+          menu: {
+            menuRenderer: {
+              items: [shareItem, notInterestedItem],
+            },
+          },
+        };
+
+        const menuButton = tile.querySelector('ytd-menu-renderer button');
+        const dropdown = document.querySelector('tp-yt-iron-dropdown');
+        const itemsContainer = document.getElementById('items');
+
+        menuButton.addEventListener('click', function () {
+          itemsContainer.innerHTML = '';
+
+          const shareEl = document.createElement(
+            'ytd-menu-service-item-renderer',
+          );
+          shareEl.className = 'style-scope ytd-menu-popup-renderer';
+          shareEl.data = shareItem;
+          shareEl.innerHTML =
+            '<tp-yt-paper-item><yt-formatted-string>Partager</yt-formatted-string></tp-yt-paper-item>';
+
+          const niEl = document.createElement('ytd-menu-service-item-renderer');
+          niEl.className = 'style-scope ytd-menu-popup-renderer';
+          niEl.data = notInterestedItem;
+          niEl.innerHTML =
+            '<tp-yt-paper-item><yt-formatted-string>Pas intéressé</yt-formatted-string></tp-yt-paper-item>';
+
+          const onNiClick = function () {
+            document.body.dataset.niClicked = '1';
+          };
+          niEl.addEventListener('click', onNiClick);
+          const paperItem = niEl.querySelector('tp-yt-paper-item');
+          if (paperItem) {
+            paperItem.addEventListener('click', onNiClick);
+          }
+
+          itemsContainer.appendChild(shareEl);
+          itemsContainer.appendChild(niEl);
+
+          dropdown.setAttribute('aria-hidden', 'false');
+          dropdown.setAttribute('opened', '');
+        });
+      })();
+    </script>
+  </body>
+</html>

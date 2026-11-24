@@ -144,6 +144,18 @@ describe('native feedback & tell youtube', () => {
 
     const cardB = createCard(tile, video, patternVerdict);
     expect(cardB.querySelector(SELECTORS.notInterestedAction)).toBeNull();
+
+    // Case C: Collapsed with patterns verdict, then re-collapsed with blocklist verdict -> Not interested button is removed
+    document.body.innerHTML = '<button id="avatar-btn"></button>';
+    const tileC = document.createElement('ytd-rich-item-renderer');
+    document.body.appendChild(tileC);
+    const cardC = collapseTile(tileC, video, patternVerdict);
+    expect(cardC.querySelector(SELECTORS.notInterestedAction)).not.toBeNull();
+
+    // Re-collapse the same tile with blocklist verdict (reusing existing card)
+    const recardC = collapseTile(tileC, video, blocklistVerdict);
+    expect(recardC).toBe(cardC);
+    expect(recardC.querySelector(SELECTORS.notInterestedAction)).toBeNull();
   });
 
   // Acceptance criterion 8:

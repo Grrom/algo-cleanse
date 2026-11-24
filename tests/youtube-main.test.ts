@@ -61,4 +61,73 @@ describe('entrypoints/youtube-main.content', () => {
     expect(el1?.getAttribute('data-ac-item-type')).toBe('not-interested');
     expect(el2?.getAttribute('data-ac-item-type')).toBe('dont-recommend');
   });
+
+  it('unwraps mixed renderer keys and compares feedback tokens before iconType', async () => {
+    const { classifyMenuItem, doPopupItemsMatchTile, unwrapMenuItemData } =
+      await import('../entrypoints/youtube-main.content');
+
+    // 1. unwrapMenuItemData handles different renderer keys
+    const navItem = {
+      menuNavigationItemRenderer: {
+        icon: { iconType: 'NOT_INTERESTED' },
+        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_nav' } },
+      },
+    };
+    const downloadItem = {
+      menuServiceItemDownloadRenderer: {
+        icon: { iconType: 'REMOVE' },
+      },
+    };
+
+    expect(unwrapMenuItemData(navItem)).toEqual(navItem.menuNavigationItemRenderer);
+    expect(unwrapMenuItemData(downloadItem)).toEqual(
+      downloadItem.menuServiceItemDownloadRenderer,
+    );
+
+    // 2. classifyMenuItem classifies unwrapped renderers
+    expect(classifyMenuItem(navItem)).toBe('not-interested');
+    expect(classifyMenuItem(downloadItem)).toBe('dont-recommend');
+
+    // 3. doPopupItemsMatchTile compares feedback tokens
+    const elA = document.createElement('div') as unknown as {
+      data?: unknown;
+    } & HTMLDivElement;
+    elA.data = {
+      menuServiceItemRenderer: {
+        icon: { iconType: 'NOT_INTERESTED' },
+        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_A' } },
+      },
+    };
+    const matchingTileItem = {
+      menuServiceItemRenderer: {
+        icon: { iconType: 'NOT_INTERESTED' },
+        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_A' } },
+      },
+    };
+    const mismatchedTokenTileItem = {
+      menuServiceItemRenderer: {
+        icon: { iconType: 'NOT_INTERESTED' },
+        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_B' } },
+      },
+    };
+
+    expect(doPopupItemsMatchTile([elA], [matchingTileItem])).toBe(true);
+    expect(doPopupItemsMatchTile([elA], [mismatchedTokenTileItem])).toBe(false);
+
+    // 4. doPopupItemsMatchTile falls back to iconType when no token
+    const elNoToken = document.createElement('div') as unknown as {
+      data?: unknown;
+    } & HTMLDivElement;
+    elNoToken.data = {
+      menuNavigationItemRenderer: {
+        icon: { iconType: 'SHARE' },
+      },
+    };
+    const tileNoToken = {
+      menuServiceItemRenderer: {
+        icon: { iconType: 'SHARE' },
+      },
+    };
+    expect(doPopupItemsMatchTile([elNoToken], [tileNoToken])).toBe(true);
+  });
 });

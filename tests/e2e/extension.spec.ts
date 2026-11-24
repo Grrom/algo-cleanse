@@ -140,4 +140,36 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
       'You blocked this channel',
     );
   });
+
+  // Acceptance criterion 1 & 2: Not interested button calls sendNotInterested once and is omitted when signed out
+  test('6. Not interested button calls sendNotInterested and is not rendered when signed out', async ({
+    page,
+  }) => {
+    // Assert that on the existing home.html (no avatar) #clickbait-tile [data-ac-action=not-interested] has count 0
+    await page.goto('https://www.youtube.com/');
+    const homeTile = page.locator('#clickbait-tile');
+    await expect(homeTile.locator('[data-ac-card]')).toBeVisible();
+    await expect(
+      homeTile.locator('[data-ac-action=not-interested]'),
+    ).toHaveCount(0);
+
+    // On signed-in page with avatar
+    await page.goto('https://www.youtube.com/signed-in.html');
+    const signedInTile = page.locator('#clickbait-tile');
+    await expect(signedInTile.locator('[data-ac-card]')).toBeVisible();
+
+    const notInterestedBtn = signedInTile.locator(
+      '[data-ac-action=not-interested]',
+    );
+    await expect(notInterestedBtn).toBeVisible();
+
+    // Click it, then expect [data-ac-status] to have text '✓ Told YouTube: Not interested',
+    // the button to be disabled, and body[data-ni-clicked="1"] to exist.
+    await notInterestedBtn.click();
+
+    const statusEl = signedInTile.locator('[data-ac-status]');
+    await expect(statusEl).toHaveText('✓ Told YouTube: Not interested');
+    await expect(notInterestedBtn).toBeDisabled();
+    await expect(page.locator('body[data-ni-clicked="1"]')).toBeAttached();
+  });
 });

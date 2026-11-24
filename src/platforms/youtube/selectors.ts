@@ -355,6 +355,9 @@ export const AC_CHANNEL_SELECTOR = `[${AC_CHANNEL_ATTR}]` as const;
 export const DATA_AC_RESOLVE_ID = 'data-ac-resolve-id' as const;
 export const DATA_AC_ITEM_TYPE = 'data-ac-item-type' as const;
 
+export const RESOLVED_TARGET_SELECTOR = (resolveId: string) =>
+  `[${DATA_AC_RESOLVE_ID}="${resolveId}"]` as const;
+
 /**
  * Custom event names for isolated <-> MAIN world communication.
  */
@@ -397,6 +400,8 @@ export const SELECTORS = {
   menuBackdrop: MENU_BACKDROP,
   menuItemIcon: MENU_ITEM_ICON,
   resolveIdAttr: DATA_AC_RESOLVE_ID,
+  resolvedPopup: RESOLVED_TARGET_SELECTOR,
+  resolveTarget: RESOLVED_TARGET_SELECTOR,
   itemTypeAttr: DATA_AC_ITEM_TYPE,
   resolveMenuEvent: AC_RESOLVE_MENU_EVENT,
   menuResolvedEvent: AC_MENU_RESOLVED_EVENT,
