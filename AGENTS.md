@@ -23,6 +23,7 @@
 - `npm run typecheck`: Run TypeScript compiler check without emitting files (`tsc --noEmit`).
 - `npm test`: Run Vitest unit tests.
 - `npm run test:coverage`: Run Vitest unit tests with code coverage report.
+- `npm run test:e2e`: Run Playwright end-to-end smoke tests against routed fixtures (builds Chrome MV3 first).
 
 ## Rules
 
@@ -31,4 +32,4 @@
 3. **Patterns are data**: Patterns are data and must never be evaluated as code (no `eval`/`new Function`).
 4. **Channel blocks privacy**: A user's own channel blocks are personal preference and must never be sent to the backend.
 5. **Unit test coverage**: Every behavior change needs a Vitest test.
-6. **E2E tests**: UI flows on YouTube pages also get a Playwright e2e test once `tests/e2e/` exists.
+6. **E2E tests**: UI flows on YouTube pages also get a Playwright e2e test once `tests/e2e/` exists. Run with `npm run test:e2e`. Tests load the built Chrome MV3 extension into a persistent Chromium context with routed HTML fixtures from `tests/e2e/pages/` and must never make real network requests to youtube.com. Add a new e2e test whenever introducing or modifying YouTube DOM interactions, card collapse/reveal states, action buttons, or feed changes.
