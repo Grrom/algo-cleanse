@@ -5,6 +5,8 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { BUNDLED_PATTERNS } from '../../../src/core/bundled-patterns';
 import { getSettings, updateSettings } from '../../../src/core/settings';
 import { DEFAULT_SETTINGS, type Settings } from '../../../src/core/types';
+import { TrainQueue } from '../../../src/core/train-queue';
+import * as nativeFeedbackModule from '../../../src/platforms/youtube/native-feedback';
 import {
   attachBlockButton,
   clearSessionRevealed,
@@ -665,6 +667,77 @@ describe('collapse UI & channel actions', () => {
       // Disable again and verify button is removed
       evaluateAndProcessTile(tile, video, patterns, disabledSettings);
       expect(tile.querySelector(SELECTORS.blockAction)).toBeNull();
+    });
+
+    it('initContent wires onCollapsed to auto train queue and onBlocked to native feedback', async () => {
+      document.body.innerHTML = '<button id="avatar-btn"></button>';
+      const sendNotInterestedSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendNotInterested')
+        .mockResolvedValue('ok');
+      const sendDontRecommendSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendDontRecommendChannel')
+        .mockResolvedValue('ok');
+
+      let tickCb: (() => void) | null = null;
+      const fakeClock = {
+        now: () => 1000,
+        setTimeout: (cb: () => void) => {
+          tickCb = cb;
+          return 1;
+        },
+        clearTimeout: () => {
+          tickCb = null;
+        },
+      };
+
+      const trainQueue = new TrainQueue({
+        clock: fakeClock,
+      });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+        dontRecommendOnBlock: true,
+      };
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile = createTestTile({
+        videoId: 'autoVid001',
+        title: 'I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG)',
+        channelHandle: '@extremevlogs',
+      });
+      document.body.appendChild(tile);
+
+      const video = extractVideo(tile)!;
+      evaluateAndProcessTile(tile, video, patterns, autoSettings);
+
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      // Trigger the queue execution
+      if (tickCb) {
+        (tickCb as () => void)();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(sendNotInterestedSpy).toHaveBeenCalledWith(tile);
+      const card = tile.querySelector(SELECTORS.card);
+      expect(card?.querySelector(SELECTORS.status)?.textContent).toBe(
+        '✓ Told YouTube: Not interested',
+      );
+
+      // Test onBlocked via handleBlockChannel
+      await handleBlockChannel('@extremevlogs', tile);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(sendDontRecommendSpy).toHaveBeenCalled();
+
+      cleanup();
     });
   });
 });

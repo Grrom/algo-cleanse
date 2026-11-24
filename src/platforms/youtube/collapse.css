@@ -143,6 +143,24 @@
   background: var(--yt-spec-10-percent-layer, rgba(128, 128, 128, 0.3));
 }
 
+.ac-btn-not-interested,
+[data-ac-action='not-interested'] {
+  background: rgba(255, 68, 68, 0.15);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 68, 68, 0.4);
+}
+
+.ac-btn-not-interested:hover:not(:disabled),
+[data-ac-action='not-interested']:hover:not(:disabled) {
+  background: rgba(255, 68, 68, 0.25);
+}
+
+.ac-btn-not-interested:disabled,
+[data-ac-action='not-interested']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .ac-actions-extra,
 [data-ac-actions-extra] {
   display: inline-flex;

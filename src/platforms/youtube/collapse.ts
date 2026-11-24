@@ -5,15 +5,69 @@ import {
   blockChannel,
   normalizeChannelHandle,
 } from '../../core/settings';
+import {
+  isVideoActed,
+  markVideoActed,
+  type TrainQueue,
+} from '../../core/train-queue';
 import type { Settings, VideoInfo } from '../../core/types';
 import { extractVideo } from './extract';
 import { onAllowed, onBlocked, onCollapsed, onRevealed } from './events';
+import { isSignedIn, sendNotInterested } from './native-feedback';
 import { SELECTORS } from './selectors';
 
 const sessionRevealedVideoIds = new Set<string>();
 const collapsedTileVideoMap = new WeakMap<Element, string>();
 const videoInfoMap = new WeakMap<Element, VideoInfo>();
 let lastBadgeCount: number | null = null;
+let globalTrainQueue: TrainQueue | null = null;
+
+export function setGlobalTrainQueue(queue: TrainQueue | null): void {
+  globalTrainQueue = queue;
+}
+
+export function getGlobalTrainQueue(): TrainQueue | null {
+  return globalTrainQueue;
+}
+
+/**
+ * Handles manual Not interested button click.
+ */
+export async function handleManualNotInterested(
+  tile: Element,
+  video: VideoInfo,
+  button: HTMLButtonElement,
+  card: HTMLElement,
+): Promise<void> {
+  // Cancel pending auto train job for this video
+  getGlobalTrainQueue()?.cancelVideo(video.videoId);
+
+  // Never act twice on the same videoId
+  if (await isVideoActed(video.videoId)) {
+    button.disabled = true;
+    const statusEl = card.querySelector(SELECTORS.status);
+    if (statusEl) {
+      statusEl.textContent = '✓ Told YouTube: Not interested';
+    }
+    return;
+  }
+
+  button.disabled = true;
+  const result = await sendNotInterested(tile);
+  const statusEl = card.querySelector(SELECTORS.status);
+
+  if (result === 'ok') {
+    await markVideoActed(video.videoId);
+    if (statusEl) {
+      statusEl.textContent = '✓ Told YouTube: Not interested';
+    }
+  } else {
+    if (statusEl) {
+      statusEl.textContent = "Couldn't reach YouTube's menu";
+    }
+    button.disabled = false;
+  }
+}
 
 /**
  * Checks if a videoId has been revealed via Show anyway during this page session.
@@ -151,6 +205,33 @@ export function createCard(
   const extraEl = document.createElement('div');
   extraEl.className = 'ac-actions-extra';
   extraEl.setAttribute(SELECTORS.actionsExtraAttr, '');
+
+  if (verdict.source === 'patterns' && isSignedIn()) {
+    const notInterestedBtn = document.createElement('button');
+    notInterestedBtn.type = 'button';
+    notInterestedBtn.className = 'ac-btn ac-btn-not-interested';
+    notInterestedBtn.setAttribute(SELECTORS.actionAttr, 'not-interested');
+    notInterestedBtn.textContent = 'Not interested';
+
+    notInterestedBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await handleManualNotInterested(tile, video, notInterestedBtn, card);
+    });
+
+    extraEl.appendChild(notInterestedBtn);
+
+    void isVideoActed(video.videoId).then((acted) => {
+      if (acted) {
+        notInterestedBtn.disabled = true;
+        const statusEl = card.querySelector(SELECTORS.status);
+        if (statusEl && !statusEl.textContent) {
+          statusEl.textContent = '✓ Told YouTube: Not interested';
+        }
+      }
+    });
+  }
+
   actionsEl.appendChild(extraEl);
 
   card.appendChild(actionsEl);
@@ -482,4 +563,5 @@ export function reEvaluateAllTiles(
 export function resetCollapseState(): void {
   clearSessionRevealed();
   lastBadgeCount = null;
+  globalTrainQueue = null;
 }

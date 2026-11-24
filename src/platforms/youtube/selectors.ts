@@ -124,6 +124,53 @@ export const TILE_MENU_BUTTON_SELECTORS = [
 export const TILE_MENU_BUTTON = TILE_MENU_BUTTON_SELECTORS.join(', ');
 
 /**
+ * Account avatar button selectors when signed in.
+ * When the user is signed in to YouTube, the topbar renders an avatar button (#avatar-btn).
+ */
+export const ACCOUNT_AVATAR_SELECTORS = [
+  '#avatar-btn',
+  'button#avatar-btn',
+  'ytd-topbar-menu-button-renderer #avatar-btn',
+  'yt-img-shadow#avatar',
+  'button[aria-label*="Google Account"]',
+] as const;
+
+export const ACCOUNT_AVATAR = ACCOUNT_AVATAR_SELECTORS.join(', ');
+
+/**
+ * YouTube menu popup container and items selectors.
+ */
+export const MENU_POPUP_RENDERER_SELECTORS = [
+  'ytd-menu-popup-renderer',
+  'tp-yt-iron-dropdown',
+  'ytd-popup-container',
+] as const;
+
+export const MENU_POPUP_RENDERER = MENU_POPUP_RENDERER_SELECTORS.join(', ');
+
+export const MENU_POPUP_ITEMS_SELECTORS = [
+  'ytd-menu-service-item-renderer',
+  'ytd-menu-navigation-item-renderer',
+  'tp-yt-paper-item',
+  'yt-list-item-view-model',
+] as const;
+
+export const MENU_POPUP_ITEMS = MENU_POPUP_ITEMS_SELECTORS.join(', ');
+
+export const MENU_ITEM_BUTTON_SELECTORS = [
+  'button',
+  'tp-yt-paper-item',
+  'yt-formatted-string',
+  'a',
+] as const;
+
+export const MENU_ITEM_BUTTON = MENU_ITEM_BUTTON_SELECTORS.join(', ');
+
+export const MENU_BACKDROP = 'tp-yt-iron-overlay-backdrop' as const;
+
+export const MENU_ITEM_ICON = 'yt-icon, yt-icon-shape, svg' as const;
+
+/**
  * Links pointing to a video (/watch?v=) or Short (/shorts/).
  */
 export const VIDEO_LINK = 'a[href*="/watch?v="], a[href*="/shorts/"]' as const;
@@ -224,6 +271,8 @@ export const AC_ACTION_SELECTOR = `[${AC_ACTION_ATTR}]` as const;
 export const AC_SHOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="show"]` as const;
 export const AC_ALLOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="allow"]` as const;
 export const AC_BLOCK_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="block"]` as const;
+export const AC_NOT_INTERESTED_ACTION_SELECTOR =
+  `[${AC_ACTION_ATTR}="not-interested"]` as const;
 
 /**
  * Actions container attribute and selector.
@@ -281,6 +330,16 @@ export const SELECTORS = {
   hiddenShorts: HIDDEN_SHORTS_SELECTOR,
   tileMenuButton: TILE_MENU_BUTTON,
   tileMenuButtonSelectors: TILE_MENU_BUTTON_SELECTORS,
+  accountAvatar: ACCOUNT_AVATAR,
+  accountAvatarSelectors: ACCOUNT_AVATAR_SELECTORS,
+  menuPopupRenderer: MENU_POPUP_RENDERER,
+  menuPopupRendererSelectors: MENU_POPUP_RENDERER_SELECTORS,
+  menuPopupItems: MENU_POPUP_ITEMS,
+  menuPopupItemsSelectors: MENU_POPUP_ITEMS_SELECTORS,
+  menuItemButton: MENU_ITEM_BUTTON,
+  menuItemButtonSelectors: MENU_ITEM_BUTTON_SELECTORS,
+  menuBackdrop: MENU_BACKDROP,
+  menuItemIcon: MENU_ITEM_ICON,
   videoLink: VIDEO_LINK,
   title: VIDEO_TITLE,
   channelHandle: CHANNEL_HANDLE,
@@ -301,6 +360,7 @@ export const SELECTORS = {
   showAction: AC_SHOW_ACTION_SELECTOR,
   allowAction: AC_ALLOW_ACTION_SELECTOR,
   blockAction: AC_BLOCK_ACTION_SELECTOR,
+  notInterestedAction: AC_NOT_INTERESTED_ACTION_SELECTOR,
   actionsContainerAttr: AC_ACTIONS_ATTR,
   actionsContainer: AC_ACTIONS_SELECTOR,
   actionsExtraAttr: AC_ACTIONS_EXTRA_ATTR,
