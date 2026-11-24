@@ -186,6 +186,7 @@ export class TrainQueue {
   private pendingJobs: QueuedJob[] = [];
   private activeTimer: unknown = null;
   private isProcessing = false;
+  private inFlightVideoId: string | null = null;
   private lastActionFinishedAt = 0;
   private currentGap = 0;
 
@@ -198,6 +199,10 @@ export class TrainQueue {
     this.minGapMs = options?.minGapMs ?? MIN_GAP_MS;
     this.maxGapMs = options?.maxGapMs ?? MAX_GAP_MS;
     this.currentGap = this.calculateGap();
+  }
+
+  public isVideoInFlight(videoId: string): boolean {
+    return this.inFlightVideoId === videoId;
   }
 
   private calculateGap(): number {
@@ -262,6 +267,7 @@ export class TrainQueue {
       this.activeTimer = null;
     }
     this.pendingJobs = [];
+    this.inFlightVideoId = null;
     this.isProcessing = false;
   }
 
@@ -307,6 +313,7 @@ export class TrainQueue {
     this.isProcessing = true;
     const queued = this.pendingJobs.shift()!;
     const { job } = queued;
+    this.inFlightVideoId = job.videoId;
 
     try {
       // 1. Check if video was already acted on
@@ -341,6 +348,7 @@ export class TrainQueue {
         await incrementDailyAutoCount(this.storage, today);
       }
     } finally {
+      this.inFlightVideoId = null;
       this.isProcessing = false;
       this.scheduleNext();
     }

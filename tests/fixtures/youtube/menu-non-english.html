@@ -88,22 +88,22 @@
                 </tp-yt-paper-item>
               </ytd-menu-service-item-renderer>
 
-              <!-- Item 1: Not interested / Pas intéressé -->
+              <!-- Item 1: Not interested / Pas intéressé (no icon attribute so only data matches) -->
               <ytd-menu-service-item-renderer
                 class="style-scope ytd-menu-popup-renderer"
               >
                 <tp-yt-paper-item>
-                  <yt-icon icon="not_interested"></yt-icon>
+                  <yt-icon></yt-icon>
                   <yt-formatted-string>Pas intéressé</yt-formatted-string>
                 </tp-yt-paper-item>
               </ytd-menu-service-item-renderer>
 
-              <!-- Item 2: Don't recommend channel / Ne pas recommander la chaîne -->
+              <!-- Item 2: Don't recommend channel / Ne pas recommander la chaîne (no icon attribute so only data matches) -->
               <ytd-menu-service-item-renderer
                 class="style-scope ytd-menu-popup-renderer"
               >
                 <tp-yt-paper-item>
-                  <yt-icon icon="remove"></yt-icon>
+                  <yt-icon></yt-icon>
                   <yt-formatted-string
                     >Ne pas recommander la chaîne</yt-formatted-string
                   >
@@ -113,6 +113,79 @@
           </ytd-menu-popup-renderer>
         </tp-yt-iron-dropdown>
       </ytd-popup-container>
+
+      <script type="application/json" data-ac-fixture="menu">
+        {
+          "tileData": {
+            "menu": {
+              "menuRenderer": {
+                "items": [
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "SHARE" },
+                      "text": { "runs": [{ "text": "Partager" }] }
+                    }
+                  },
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "NOT_INTERESTED" },
+                      "serviceEndpoint": {
+                        "feedbackEndpoint": {
+                          "feedbackToken": "AB987_ni_token"
+                        }
+                      },
+                      "text": { "runs": [{ "text": "Pas intéressé" }] }
+                    }
+                  },
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "REMOVE" },
+                      "serviceEndpoint": {
+                        "feedbackEndpoint": {
+                          "feedbackToken": "AB987_dr_token"
+                        }
+                      },
+                      "text": {
+                        "runs": [{ "text": "Ne pas recommander la chaîne" }]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "itemsData": [
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "SHARE" },
+                "text": { "runs": [{ "text": "Partager" }] }
+              }
+            },
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "NOT_INTERESTED" },
+                "serviceEndpoint": {
+                  "feedbackEndpoint": {
+                    "feedbackToken": "AB987_ni_token"
+                  }
+                },
+                "text": { "runs": [{ "text": "Pas intéressé" }] }
+              }
+            },
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "REMOVE" },
+                "serviceEndpoint": {
+                  "feedbackEndpoint": {
+                    "feedbackToken": "AB987_dr_token"
+                  }
+                },
+                "text": { "runs": [{ "text": "Ne pas recommander la chaîne" }] }
+              }
+            }
+          ]
+        }
+      </script>
     </ytd-app>
   </body>
 </html>

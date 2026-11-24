@@ -5,6 +5,15 @@
   display: none !important;
 }
 
+/* Temporarily make tile children operable during menu action without visual uncollapsing */
+.ac-collapsed.ac-menu-operating > :not([data-ac-card]) {
+  display: block !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  pointer-events: auto !important;
+  opacity: 0 !important;
+}
+
 .ac-collapsed {
   min-height: unset !important;
 }

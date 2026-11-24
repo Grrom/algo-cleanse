@@ -19,6 +19,7 @@ import { SELECTORS } from './selectors';
 const sessionRevealedVideoIds = new Set<string>();
 const collapsedTileVideoMap = new WeakMap<Element, string>();
 const videoInfoMap = new WeakMap<Element, VideoInfo>();
+const inFlightManualSends = new Set<string>();
 let lastBadgeCount: number | null = null;
 let globalTrainQueue: TrainQueue | null = null;
 
@@ -39,33 +40,45 @@ export async function handleManualNotInterested(
   button: HTMLButtonElement,
   card: HTMLElement,
 ): Promise<void> {
-  // Cancel pending auto train job for this video
-  getGlobalTrainQueue()?.cancelVideo(video.videoId);
+  button.disabled = true;
 
-  // Never act twice on the same videoId
-  if (await isVideoActed(video.videoId)) {
-    button.disabled = true;
-    const statusEl = card.querySelector(SELECTORS.status);
-    if (statusEl) {
-      statusEl.textContent = '✓ Told YouTube: Not interested';
-    }
+  if (
+    inFlightManualSends.has(video.videoId) ||
+    getGlobalTrainQueue()?.isVideoInFlight(video.videoId)
+  ) {
     return;
   }
 
-  button.disabled = true;
-  const result = await sendNotInterested(tile);
-  const statusEl = card.querySelector(SELECTORS.status);
+  // Cancel pending auto train job for this video
+  getGlobalTrainQueue()?.cancelVideo(video.videoId);
 
-  if (result === 'ok') {
-    await markVideoActed(video.videoId);
-    if (statusEl) {
-      statusEl.textContent = '✓ Told YouTube: Not interested';
+  inFlightManualSends.add(video.videoId);
+  try {
+    // Never act twice on the same videoId
+    if (await isVideoActed(video.videoId)) {
+      const statusEl = card.querySelector(SELECTORS.status);
+      if (statusEl) {
+        statusEl.textContent = '✓ Told YouTube: Not interested';
+      }
+      return;
     }
-  } else {
-    if (statusEl) {
-      statusEl.textContent = "Couldn't reach YouTube's menu";
+
+    const result = await sendNotInterested(tile);
+    const statusEl = card.querySelector(SELECTORS.status);
+
+    if (result === 'ok') {
+      await markVideoActed(video.videoId);
+      if (statusEl) {
+        statusEl.textContent = '✓ Told YouTube: Not interested';
+      }
+    } else {
+      if (statusEl) {
+        statusEl.textContent = "Couldn't reach YouTube's menu";
+      }
+      button.disabled = false;
     }
-    button.disabled = false;
+  } finally {
+    inFlightManualSends.delete(video.videoId);
   }
 }
 
@@ -562,6 +575,7 @@ export function reEvaluateAllTiles(
  */
 export function resetCollapseState(): void {
   clearSessionRevealed();
+  inFlightManualSends.clear();
   lastBadgeCount = null;
   globalTrainQueue = null;
 }

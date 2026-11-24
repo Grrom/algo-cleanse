@@ -739,5 +739,136 @@ describe('collapse UI & channel actions', () => {
 
       cleanup();
     });
+
+    // Acceptance criterion 5:
+    // onRevealed before the job runs cancels it; onAllowed cancels that channel's jobs; manual click cancels the pending auto job for that video
+    it("onRevealed before the job runs cancels it; onAllowed cancels that channel's jobs; manual click cancels the pending auto job for that video", async () => {
+      document.body.innerHTML = '<button id="avatar-btn"></button>';
+      const sendNotInterestedSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendNotInterested')
+        .mockResolvedValue('ok');
+
+      let tickCb: (() => void) | null = null;
+      const fakeClock = {
+        currentTime: 1000,
+        now: function () {
+          return this.currentTime;
+        },
+        setTimeout: (cb: () => void) => {
+          tickCb = cb;
+          return 1;
+        },
+        clearTimeout: () => {
+          tickCb = null;
+        },
+      };
+
+      const trainQueue = new TrainQueue({
+        clock: fakeClock,
+      });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+      await updateSettings(autoSettings);
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      // 1. Show anyway cancels pending job for that video
+      const tile1 = createTestTile({
+        videoId: 'cancelRevealVid',
+        title: 'Video Gone Wrong 1',
+        channelHandle: '@channel1',
+      });
+      document.body.appendChild(tile1);
+      evaluateAndProcessTile(
+        tile1,
+        extractVideo(tile1)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const showBtn = tile1.querySelector(
+        SELECTORS.showAction,
+      ) as HTMLButtonElement;
+      expect(showBtn).not.toBeNull();
+      showBtn.click();
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(sendNotInterestedSpy).not.toHaveBeenCalled();
+
+      // 2. Always allow cancels jobs for that channel
+      const tile2 = createTestTile({
+        videoId: 'cancelAllowVid',
+        title: 'Video Gone Wrong 2',
+        channelHandle: '@channelAllow',
+      });
+      document.body.appendChild(tile2);
+      evaluateAndProcessTile(
+        tile2,
+        extractVideo(tile2)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const allowBtn = tile2.querySelector(
+        SELECTORS.allowAction,
+      ) as HTMLButtonElement;
+      expect(allowBtn).not.toBeNull();
+      allowBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(sendNotInterestedSpy).not.toHaveBeenCalled();
+
+      // 3. Manual Not interested click cancels auto job and calls sendNotInterested once
+      const tile3 = createTestTile({
+        videoId: 'cancelManualVid',
+        title: 'Video Gone Wrong 3',
+        channelHandle: '@channelManual',
+      });
+      document.body.appendChild(tile3);
+      evaluateAndProcessTile(
+        tile3,
+        extractVideo(tile3)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const card3 = tile3.querySelector(SELECTORS.card)!;
+      const notInterestedBtn = card3.querySelector(
+        SELECTORS.notInterestedAction,
+      ) as HTMLButtonElement;
+      expect(notInterestedBtn).not.toBeNull();
+
+      notInterestedBtn.click();
+      expect(trainQueue.getPendingCount()).toBe(0);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(sendNotInterestedSpy).toHaveBeenCalledTimes(1);
+      expect(sendNotInterestedSpy).toHaveBeenCalledWith(tile3);
+
+      // Trigger timer if any was scheduled
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+
+      // Still only called once by the manual action
+      expect(sendNotInterestedSpy).toHaveBeenCalledTimes(1);
+
+      cleanup();
+    });
   });
 });

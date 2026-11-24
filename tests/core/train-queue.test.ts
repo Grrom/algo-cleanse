@@ -312,28 +312,81 @@ describe('train-queue', () => {
   // Acceptance criterion 7:
   // Same videoId never acted on twice, including across reloads (persisted set)
   it('Same videoId never acted on twice, including across reloads (persisted set)', async () => {
-    // 1. Manually or auto mark video acted
-    await markVideoActed('vidDouble', fakeStorage);
-    expect(await isVideoActed('vidDouble', fakeStorage)).toBe(true);
+    const tickAndFlush = async (ms: number) => {
+      fakeClock.tick(ms);
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+    };
 
-    // 2. Queue with persisted storage skips already acted video
-    const queue = new TrainQueue({
+    // 1. Initial queue execution: acts on vidA, succeeds and marks as acted
+    const queue1 = new TrainQueue({
       clock: fakeClock,
       storage: fakeStorage,
+      random: () => 0,
     });
 
-    const duplicateAction = vi.fn().mockResolvedValue('ok');
-    queue.enqueue({
-      videoId: 'vidDouble',
-      action: duplicateAction,
+    const actionA1 = vi.fn().mockResolvedValue('ok');
+    queue1.enqueue({
+      videoId: 'vidA',
+      action: actionA1,
     });
 
-    fakeClock.tick(20_000);
-    await Promise.resolve();
+    await tickAndFlush(20_000);
+    expect(actionA1).toHaveBeenCalledTimes(1);
+    expect(await isVideoActed('vidA', fakeStorage)).toBe(true);
 
-    expect(duplicateAction).not.toHaveBeenCalled();
+    // 2. Reload: build a NEW TrainQueue on the same fakeStorage
+    const queue2 = new TrainQueue({
+      clock: fakeClock,
+      storage: fakeStorage,
+      random: () => 0,
+    });
 
-    // 3. Persisted set preserves across reloads and caps at 2000
+    const actionA2 = vi.fn().mockResolvedValue('ok');
+    const actionB_control = vi.fn().mockResolvedValue('ok');
+
+    // Enqueue duplicate vidA AND un-acted positive control vidB
+    queue2.enqueue({
+      videoId: 'vidA',
+      action: actionA2,
+    });
+    queue2.enqueue({
+      videoId: 'vidB',
+      action: actionB_control,
+    });
+
+    await tickAndFlush(20_000); // vidA runs and is skipped
+    await tickAndFlush(1); // vidB runs with 0 delay
+
+    // vidA is dropped / skipped because already acted
+    expect(actionA2).not.toHaveBeenCalled();
+    // positive control vidB DOES run
+    expect(actionB_control).toHaveBeenCalledTimes(1);
+
+    // 3. Manual-then-auto: manual action marks id first, then auto job is skipped
+    await markVideoActed('vidManual', fakeStorage);
+    expect(await isVideoActed('vidManual', fakeStorage)).toBe(true);
+
+    const actionManualAuto = vi.fn().mockResolvedValue('ok');
+    const actionC_control = vi.fn().mockResolvedValue('ok');
+
+    queue2.enqueue({
+      videoId: 'vidManual',
+      action: actionManualAuto,
+    });
+    queue2.enqueue({
+      videoId: 'vidC',
+      action: actionC_control,
+    });
+
+    await tickAndFlush(20_000); // vidManual runs and is skipped (gap 20s from vidB)
+    await tickAndFlush(1); // vidC runs with 0 delay
+
+    expect(actionManualAuto).not.toHaveBeenCalled();
+    expect(actionC_control).toHaveBeenCalledTimes(1);
+
+    // 4. Persisted set preserves across reloads and caps at 2000
     for (let i = 0; i < 2005; i++) {
       await markVideoActed(`v_${i}`, fakeStorage);
     }
@@ -351,6 +404,13 @@ describe('train-queue', () => {
       storage: fakeStorage,
     });
 
+    const tickAndFlush = async (ms: number) => {
+      fakeClock.tick(ms);
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+    };
+
     const dropAction = vi.fn().mockResolvedValue('ok');
     queue.enqueue({
       videoId: 'dropVid',
@@ -365,10 +425,19 @@ describe('train-queue', () => {
       action: skipAction,
     });
 
-    fakeClock.tick(100_000);
-    await Promise.resolve();
+    const validAction = vi.fn().mockResolvedValue('ok');
+    queue.enqueue({
+      videoId: 'validVid',
+      validate: () => 'valid',
+      action: validAction,
+    });
+
+    await tickAndFlush(20_000); // dropVid runs and drops
+    await tickAndFlush(20_000); // skipVid runs and skips
+    await tickAndFlush(20_000); // validVid runs
 
     expect(dropAction).not.toHaveBeenCalled();
     expect(skipAction).not.toHaveBeenCalled();
+    expect(validAction).toHaveBeenCalledTimes(1);
   });
 });

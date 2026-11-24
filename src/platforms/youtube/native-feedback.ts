@@ -31,14 +31,8 @@ function classifyData(
   const anyData = data as ItemDataShape;
   const serviceItem = anyData.menuServiceItemRenderer ?? anyData;
   const iconType: string = serviceItem?.icon?.iconType ?? '';
-  const token: string =
-    serviceItem?.serviceEndpoint?.feedbackEndpoint?.feedbackToken ?? '';
 
-  if (
-    iconType === 'NOT_INTERESTED' ||
-    iconType.includes('NOT_INTERESTED') ||
-    token.includes('not_interested')
-  ) {
+  if (iconType === 'NOT_INTERESTED' || iconType.includes('NOT_INTERESTED')) {
     return 'not-interested';
   }
 
@@ -48,9 +42,7 @@ function classifyData(
     iconType === 'CHANNEL_OFF' ||
     iconType === 'REMOVE_CHANNEL' ||
     iconType === 'BLOCK' ||
-    iconType.includes('DONT_RECOMMEND') ||
-    token.includes('dont_recommend') ||
-    token.includes('channel')
+    iconType.includes('DONT_RECOMMEND')
   ) {
     return 'dont-recommend';
   }
@@ -108,7 +100,7 @@ function identifyMatchingItem(
     }
   }
 
-  // 2. Check item.data or item.__data property
+  // 2. Check item.data or item.__data property (jsdom / shared environment fallback)
   for (const item of items) {
     const anyItem = item as unknown as { data?: unknown; __data?: unknown };
     const itemData = anyItem.data ?? anyItem.__data;
@@ -117,18 +109,7 @@ function identifyMatchingItem(
     }
   }
 
-  // 3. Check tile's menuRenderer renderer data items index
-  const tileItems = getItemsFromTileData(tile);
-  if (Array.isArray(tileItems)) {
-    const targetIndex = tileItems.findIndex(
-      (itemData) => classifyData(itemData) === targetAction,
-    );
-    if (targetIndex >= 0 && items[targetIndex]) {
-      return items[targetIndex];
-    }
-  }
-
-  // 3b. Check data-ac-menu-indices attribute on tile
+  // 3. Check data-ac-menu-indices attribute on tile (set by MAIN world script)
   const attrIndices = tile.getAttribute('data-ac-menu-indices');
   if (attrIndices) {
     try {
@@ -148,32 +129,28 @@ function identifyMatchingItem(
     }
   }
 
-  // 4. Check DOM icons and attributes on each item
+  // 3b. Check tile's menuRenderer renderer data items index (jsdom fallback)
+  const tileItems = getItemsFromTileData(tile);
+  if (Array.isArray(tileItems)) {
+    const targetIndex = tileItems.findIndex(
+      (itemData) => classifyData(itemData) === targetAction,
+    );
+    if (targetIndex >= 0 && items[targetIndex]) {
+      return items[targetIndex];
+    }
+  }
+
+  // 4. Check DOM icons and attributes on each item (strict check)
   for (const item of items) {
     const iconEl = item.querySelector(SELECTORS.menuItemIcon);
     const iconAttr = (iconEl?.getAttribute('icon') ?? '').toLowerCase();
-    const ariaLabel = (
-      item.getAttribute('aria-label') ??
-      iconEl?.getAttribute('aria-label') ??
-      ''
-    ).toLowerCase();
 
     if (targetAction === 'not-interested') {
-      if (
-        iconAttr.includes('not_interested') ||
-        iconAttr === 'not-interested' ||
-        ariaLabel.includes('not_interested')
-      ) {
+      if (iconAttr === 'not_interested' || iconAttr === 'not-interested') {
         return item;
       }
     } else {
-      if (
-        iconAttr.includes('remove') ||
-        iconAttr.includes('dont_recommend') ||
-        iconAttr.includes('channel') ||
-        ariaLabel.includes('dont_recommend') ||
-        ariaLabel.includes('channel')
-      ) {
+      if (iconAttr === 'remove' || iconAttr === 'dont_recommend') {
         return item;
       }
     }
@@ -208,25 +185,22 @@ function closeLeftoverPopups(): void {
       code: 'Escape',
       keyCode: 27,
       bubbles: true,
+      cancelable: true,
     }),
   );
 
-  // 2. Remove / dismiss any backdrop
+  // 2. Click any backdrop without removing the node
   const backdrops = document.querySelectorAll(SELECTORS.menuBackdrop);
   for (const bd of Array.from(backdrops)) {
     (bd as HTMLElement).click?.();
-    bd.remove();
   }
 
-  // 3. Close open popup renderers
+  // 3. Close open popup renderers using close() method
   const popups = document.querySelectorAll(SELECTORS.menuPopupRenderer);
   for (const popup of Array.from(popups)) {
     const closable = popup as Element & { close?: () => void };
     if (typeof closable.close === 'function') {
       closable.close();
-    }
-    if (popup.hasAttribute('opened')) {
-      popup.removeAttribute('opened');
     }
   }
 }
@@ -251,36 +225,50 @@ async function sendFeedbackAction(
     return 'unavailable';
   }
 
-  // Temporarily make the menu button operable without visibly uncollapsing the card
-  const overriddenElements: { el: HTMLElement; prevDisplay: string }[] = [];
-  let curr: HTMLElement | null = menuButton;
-  while (curr && curr !== tile) {
-    if (curr.style.display === 'none') {
-      overriddenElements.push({ el: curr, prevDisplay: curr.style.display });
-      curr.style.setProperty('display', 'block', 'important');
-    }
-    curr = curr.parentElement;
+  const resolveId = `ac-res-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  tile.setAttribute('data-ac-resolve-id', resolveId);
+
+  const wasCollapsed = tile.classList.contains(SELECTORS.collapsedClass);
+  if (wasCollapsed) {
+    tile.classList.add('ac-menu-operating');
   }
 
   try {
-    // Notify MAIN world script to inspect and resolve menu
+    // 1. Prepare waiting for ac-menu-resolved reply from MAIN world script
+    const resolvedPromise = new Promise<boolean>((resolve) => {
+      const handler = (event: Event) => {
+        const customEvent = event as CustomEvent<{ resolveId?: string }>;
+        if (customEvent.detail?.resolveId === resolveId) {
+          window.removeEventListener('ac-menu-resolved', handler);
+          resolve(true);
+        }
+      };
+      window.addEventListener('ac-menu-resolved', handler);
+      setTimeout(() => {
+        window.removeEventListener('ac-menu-resolved', handler);
+        resolve(false);
+      }, 1200);
+    });
+
+    // 2. Open the tile menu (single click)
+    menuButton.click();
+
+    // 3. Dispatch ac-resolve-menu with resolveId
     window.dispatchEvent(
       new CustomEvent('ac-resolve-menu', {
-        detail: { tile },
+        detail: { resolveId },
         bubbles: true,
       }),
     );
 
-    // Open the tile menu
-    menuButton.click();
-    menuButton.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, cancelable: true }),
-    );
+    // 4. Await response from MAIN world script
+    const resolved = await resolvedPromise;
+    if (!resolved) {
+      closeLeftoverPopups();
+      return 'unavailable';
+    }
 
-    // Small delay/microtask for popup renderers
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Find popup items (filtering out nested items)
+    // 5. Query popup items
     const items = Array.from(
       document.querySelectorAll(SELECTORS.menuPopupItems),
     ).filter(
@@ -289,22 +277,25 @@ async function sendFeedbackAction(
         !el.parentElement.closest(SELECTORS.menuPopupItems),
     );
     if (items.length === 0) {
+      closeLeftoverPopups();
       return 'unavailable';
     }
 
+    // 6. Identify the matching item from renderer data / tags
     const matchedItem = identifyMatchingItem(items, tile, action);
     if (!matchedItem) {
+      closeLeftoverPopups();
       return 'unavailable';
     }
 
-    // Click the matched item (or its inner clickable element)
+    // 7. Click the matched item (or its inner clickable element)
     const clickable =
       (matchedItem.querySelector(
         SELECTORS.menuItemButton,
       ) as HTMLElement | null) ?? (matchedItem as HTMLElement);
     clickable.click();
 
-    // Close any leftover popup
+    // 8. Close any leftover popup
     closeLeftoverPopups();
 
     return 'ok';
@@ -312,9 +303,9 @@ async function sendFeedbackAction(
     console.error(`Error in sendFeedbackAction (${action}):`, err);
     return 'failed';
   } finally {
-    // Restore overridden styles
-    for (const { el, prevDisplay } of overriddenElements) {
-      el.style.display = prevDisplay;
+    tile.removeAttribute('data-ac-resolve-id');
+    if (wasCollapsed) {
+      tile.classList.remove('ac-menu-operating');
     }
   }
 }

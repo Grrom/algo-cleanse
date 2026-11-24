@@ -128,11 +128,10 @@ export const TILE_MENU_BUTTON = TILE_MENU_BUTTON_SELECTORS.join(', ');
  * When the user is signed in to YouTube, the topbar renders an avatar button (#avatar-btn).
  */
 export const ACCOUNT_AVATAR_SELECTORS = [
+  'ytd-masthead #avatar-btn',
+  'ytd-topbar-menu-button-renderer #avatar-btn',
   '#avatar-btn',
   'button#avatar-btn',
-  'ytd-topbar-menu-button-renderer #avatar-btn',
-  'yt-img-shadow#avatar',
-  'button[aria-label*="Google Account"]',
 ] as const;
 
 export const ACCOUNT_AVATAR = ACCOUNT_AVATAR_SELECTORS.join(', ');

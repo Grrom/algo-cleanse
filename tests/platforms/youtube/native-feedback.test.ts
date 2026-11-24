@@ -204,6 +204,16 @@ describe('native feedback & tell youtube', () => {
   // Acceptance criterion 9:
   // Fixture test: sendNotInterested clicks the item identified from data, and still works with non-English labels in the fixture
   it('Fixture test: sendNotInterested clicks the item identified from data, and still works with non-English labels in the fixture', async () => {
+    (globalThis as Record<string, unknown>).defineContentScript = (
+      def: unknown,
+    ) => def;
+    const youtubeMain = (
+      await import('../../../entrypoints/youtube-main.content')
+    ).default;
+    youtubeMain.main(
+      {} as unknown as NonNullable<Parameters<typeof youtubeMain.main>[0]>,
+    );
+
     const fixtureHtml = readFileSync(
       resolve(__dirname, '../../fixtures/youtube/menu-non-english.html'),
       'utf-8',
@@ -212,6 +222,14 @@ describe('native feedback & tell youtube', () => {
 
     const tile = document.querySelector(SELECTORS.tile)!;
     expect(tile).not.toBeNull();
+
+    // Parse renderer data from the fixture script block
+    const scriptEl = document.querySelector('script[data-ac-fixture="menu"]');
+    expect(scriptEl).not.toBeNull();
+    const fixtureData = JSON.parse(scriptEl!.textContent || '{}');
+
+    // Assign Polymer renderer data as YouTube does
+    (tile as unknown as Record<string, unknown>).data = fixtureData.tileData;
 
     // Find popup items in French fixture
     const popupItems = Array.from(
@@ -223,32 +241,17 @@ describe('native feedback & tell youtube', () => {
     );
     expect(popupItems.length).toBe(3);
 
+    popupItems.forEach((item, idx) => {
+      if (fixtureData.itemsData[idx]) {
+        (item as unknown as Record<string, unknown>).data =
+          fixtureData.itemsData[idx];
+      }
+    });
+
     const [shareItem, notInterestedItem, dontRecommendItem] = popupItems;
     expect(shareItem).toBeDefined();
     expect(notInterestedItem).toBeDefined();
     expect(dontRecommendItem).toBeDefined();
-
-    // Set YouTube renderer data on items (with non-English text)
-    (shareItem as unknown as Record<string, unknown>).data = {
-      menuServiceItemRenderer: {
-        icon: { iconType: 'SHARE' },
-        text: { runs: [{ text: 'Partager' }] },
-      },
-    };
-    (notInterestedItem as unknown as Record<string, unknown>).data = {
-      menuServiceItemRenderer: {
-        icon: { iconType: 'NOT_INTERESTED' },
-        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_ni' } },
-        text: { runs: [{ text: 'Pas intéressé' }] },
-      },
-    };
-    (dontRecommendItem as unknown as Record<string, unknown>).data = {
-      menuServiceItemRenderer: {
-        icon: { iconType: 'REMOVE' },
-        serviceEndpoint: { feedbackEndpoint: { feedbackToken: 'token_dr' } },
-        text: { runs: [{ text: 'Ne pas recommander la chaîne' }] },
-      },
-    };
 
     const shareClick = vi.fn();
     const niClick = vi.fn();

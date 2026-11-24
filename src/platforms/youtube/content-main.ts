@@ -28,6 +28,8 @@ import {
 import { startScanner } from './scanner';
 import { SELECTORS } from './selectors';
 
+const inFlightDontRecommendHandles = new Set<string>();
+
 /**
  * Handles YouTube "Don't recommend channel" feedback when a channel is blocked.
  */
@@ -41,22 +43,33 @@ export async function handleBlockDontRecommend(
   }
 
   const norm = normalizeChannelHandle(handle);
+  if (inFlightDontRecommendHandles.has(norm)) {
+    return;
+  }
   const alreadyActed = await isHandleDontRecommended(norm);
   if (alreadyActed) {
     return;
   }
 
-  await markHandleDontRecommended(norm);
-  const result = await sendDontRecommendChannel(tile);
+  inFlightDontRecommendHandles.add(norm);
+  try {
+    const result = await sendDontRecommendChannel(tile);
 
-  const card = tile.querySelector(SELECTORS.card);
-  const statusEl = card?.querySelector(SELECTORS.status);
-  if (statusEl) {
-    if (result === 'ok') {
-      statusEl.textContent = "✓ Told YouTube: Don't recommend channel";
-    } else {
-      statusEl.textContent = "Couldn't reach YouTube's menu";
+    const card = tile.querySelector(SELECTORS.card);
+    const statusEl = card?.querySelector(SELECTORS.status);
+    if (statusEl) {
+      if (result === 'ok') {
+        statusEl.textContent = "✓ Told YouTube: Don't recommend channel";
+      } else {
+        statusEl.textContent = "Couldn't reach YouTube's menu";
+      }
     }
+
+    if (result === 'ok') {
+      await markHandleDontRecommended(norm);
+    }
+  } finally {
+    inFlightDontRecommendHandles.delete(norm);
   }
 }
 
