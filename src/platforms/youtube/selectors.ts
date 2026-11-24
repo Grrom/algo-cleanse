@@ -296,6 +296,22 @@ export const AC_ALLOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="allow"]` as const;
 export const AC_BLOCK_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="block"]` as const;
 export const AC_NOT_INTERESTED_ACTION_SELECTOR =
   `[${AC_ACTION_ATTR}="not-interested"]` as const;
+export const AC_WRONGLY_FILTERED_ACTION_SELECTOR =
+  `[${AC_ACTION_ATTR}="wrongly-filtered"]` as const;
+export const AC_CLICKBAIT_ACTION_SELECTOR =
+  `[${AC_ACTION_ATTR}="clickbait"]` as const;
+
+/**
+ * Card feedback note attribute and selector.
+ */
+export const AC_FEEDBACK_NOTE_ATTR = 'data-ac-feedback-note' as const;
+export const AC_FEEDBACK_NOTE_SELECTOR = `[${AC_FEEDBACK_NOTE_ATTR}]` as const;
+
+/**
+ * Tile hover actions container attribute and selector.
+ */
+export const AC_HOVER_ACTIONS_ATTR = 'data-ac-hover-actions' as const;
+export const AC_HOVER_ACTIONS_SELECTOR = `[${AC_HOVER_ACTIONS_ATTR}]` as const;
 
 /**
  * Actions container attribute and selector.
@@ -405,6 +421,12 @@ export const SELECTORS = {
   allowAction: AC_ALLOW_ACTION_SELECTOR,
   blockAction: AC_BLOCK_ACTION_SELECTOR,
   notInterestedAction: AC_NOT_INTERESTED_ACTION_SELECTOR,
+  wronglyFilteredAction: AC_WRONGLY_FILTERED_ACTION_SELECTOR,
+  clickbaitAction: AC_CLICKBAIT_ACTION_SELECTOR,
+  feedbackNoteAttr: AC_FEEDBACK_NOTE_ATTR,
+  feedbackNote: AC_FEEDBACK_NOTE_SELECTOR,
+  hoverActionsAttr: AC_HOVER_ACTIONS_ATTR,
+  hoverActions: AC_HOVER_ACTIONS_SELECTOR,
   actionsContainerAttr: AC_ACTIONS_ATTR,
   actionsContainer: AC_ACTIONS_SELECTOR,
   actionsExtraAttr: AC_ACTIONS_EXTRA_ATTR,

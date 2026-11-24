@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to AlgoCleanse</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="welcome-container">
+      <header class="welcome-header">
+        <h1 class="welcome-title">Welcome to AlgoCleanse</h1>
+        <p class="welcome-subtitle">
+          Clickbait gets collapsed, Shorts are gone, and you can always see why
+          a video was filtered.
+        </p>
+      </header>
+
+      <div class="features-list">
+        <div class="feature-card">
+          <p>
+            <strong>Not interested</strong> on any filtered card tells YouTube
+            to show you less of it, on your phone too.
+          </p>
+        </div>
+        <div class="feature-card">
+          <p>
+            <strong>Auto-send</strong> for the filters you choose: set it up
+            anytime in the popup.
+          </p>
+        </div>
+      </div>
+
+      <section class="consent-card">
+        <h2 class="consent-title">Help improve detection?</h2>
+        <p class="consent-desc">
+          When you tap “Wrongly filtered?” or “Clickbait?” , we send:
+        </p>
+        <ul class="consent-items">
+          <li>the video’s ID, title and channel handle</li>
+          <li>which rules matched and your strictness</li>
+          <li>extension and patterns version</li>
+        </ul>
+        <p class="consent-privacy">
+          No account, no browsing history, no IP stored. Channels you block are
+          never sent.
+        </p>
+        <div class="consent-actions">
+          <button type="button" id="btn-consent-yes" class="btn btn-yes">
+            Yes, help
+          </button>
+          <button type="button" id="btn-consent-no" class="btn btn-no">
+            No thanks
+          </button>
+        </div>
+        <div
+          id="consent-status"
+          class="consent-status"
+          style="display: none"
+        ></div>
+      </section>
+
+      <footer class="welcome-footer">
+        <p>You can change this anytime in the extension popup.</p>
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
