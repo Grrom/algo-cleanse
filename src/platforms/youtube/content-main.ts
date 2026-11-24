@@ -126,11 +126,20 @@ export async function initContent(options?: {
           const res = await sendNotInterested(tile);
           const card = tile.querySelector(SELECTORS.card);
           const statusEl = card?.querySelector(SELECTORS.status);
+          const notInterestedBtn = card?.querySelector(
+            SELECTORS.notInterestedAction,
+          ) as HTMLButtonElement | null;
           if (statusEl) {
             if (res === 'ok') {
               statusEl.textContent = '✓ Told YouTube: Not interested';
+              if (notInterestedBtn) {
+                notInterestedBtn.disabled = true;
+              }
             } else {
               statusEl.textContent = "Couldn't reach YouTube's menu";
+              if (notInterestedBtn) {
+                notInterestedBtn.disabled = false;
+              }
             }
           }
           return res;

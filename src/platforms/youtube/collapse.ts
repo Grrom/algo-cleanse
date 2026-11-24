@@ -40,14 +40,13 @@ export async function handleManualNotInterested(
   button: HTMLButtonElement,
   card: HTMLElement,
 ): Promise<void> {
-  button.disabled = true;
-
   if (
     inFlightManualSends.has(video.videoId) ||
     getGlobalTrainQueue()?.isVideoInFlight(video.videoId)
   ) {
     return;
   }
+  button.disabled = true;
 
   // Cancel pending auto train job for this video
   getGlobalTrainQueue()?.cancelVideo(video.videoId);

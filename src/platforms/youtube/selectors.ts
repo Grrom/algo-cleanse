@@ -147,6 +147,22 @@ export const MENU_POPUP_RENDERER_SELECTORS = [
 
 export const MENU_POPUP_RENDERER = MENU_POPUP_RENDERER_SELECTORS.join(', ');
 
+/**
+ * Open menu popup container selectors.
+ * Matches active open menu popup renderer inside the iron-dropdown without matching closed containers.
+ */
+export const OPEN_MENU_POPUP_SELECTORS = [
+  'tp-yt-iron-dropdown:not([aria-hidden="true"]) ytd-menu-popup-renderer',
+  'tp-yt-iron-dropdown[opened] ytd-menu-popup-renderer',
+  'ytd-menu-popup-renderer[opened]',
+  'tp-yt-iron-dropdown:not([aria-hidden="true"])',
+  'tp-yt-iron-dropdown[opened]',
+] as const;
+
+export const OPEN_MENU_POPUP = OPEN_MENU_POPUP_SELECTORS.join(', ');
+
+export const MENU_DROPDOWN = 'tp-yt-iron-dropdown' as const;
+
 export const MENU_POPUP_ITEMS_SELECTORS = [
   'ytd-menu-service-item-renderer',
   'ytd-menu-navigation-item-renderer',
@@ -155,6 +171,14 @@ export const MENU_POPUP_ITEMS_SELECTORS = [
 ] as const;
 
 export const MENU_POPUP_ITEMS = MENU_POPUP_ITEMS_SELECTORS.join(', ');
+
+export const MENU_CLICK_TARGET_SELECTORS = [
+  'ytd-menu-renderer',
+  '.yt-lockup-view-model-wiz__menu',
+  'yt-icon-button',
+] as const;
+
+export const MENU_CLICK_TARGET = MENU_CLICK_TARGET_SELECTORS.join(', ');
 
 export const MENU_ITEM_BUTTON_SELECTORS = [
   'button',
@@ -310,6 +334,18 @@ export const AC_CHANNEL_ATTR = 'data-ac-channel' as const;
 export const AC_CHANNEL_SELECTOR = `[${AC_CHANNEL_ATTR}]` as const;
 
 /**
+ * Attributes used during native feedback handshake.
+ */
+export const DATA_AC_RESOLVE_ID = 'data-ac-resolve-id' as const;
+export const DATA_AC_ITEM_TYPE = 'data-ac-item-type' as const;
+
+/**
+ * Custom event names for isolated <-> MAIN world communication.
+ */
+export const AC_RESOLVE_MENU_EVENT = 'ac-resolve-menu' as const;
+export const AC_MENU_RESOLVED_EVENT = 'ac-menu-resolved' as const;
+
+/**
  * Centralized SELECTORS object.
  */
 export const SELECTORS = {
@@ -333,12 +369,21 @@ export const SELECTORS = {
   accountAvatarSelectors: ACCOUNT_AVATAR_SELECTORS,
   menuPopupRenderer: MENU_POPUP_RENDERER,
   menuPopupRendererSelectors: MENU_POPUP_RENDERER_SELECTORS,
+  openMenuPopup: OPEN_MENU_POPUP,
+  openMenuPopupSelectors: OPEN_MENU_POPUP_SELECTORS,
+  menuDropdown: MENU_DROPDOWN,
   menuPopupItems: MENU_POPUP_ITEMS,
   menuPopupItemsSelectors: MENU_POPUP_ITEMS_SELECTORS,
+  menuClickTarget: MENU_CLICK_TARGET,
+  menuClickTargetSelectors: MENU_CLICK_TARGET_SELECTORS,
   menuItemButton: MENU_ITEM_BUTTON,
   menuItemButtonSelectors: MENU_ITEM_BUTTON_SELECTORS,
   menuBackdrop: MENU_BACKDROP,
   menuItemIcon: MENU_ITEM_ICON,
+  resolveIdAttr: DATA_AC_RESOLVE_ID,
+  itemTypeAttr: DATA_AC_ITEM_TYPE,
+  resolveMenuEvent: AC_RESOLVE_MENU_EVENT,
+  menuResolvedEvent: AC_MENU_RESOLVED_EVENT,
   videoLink: VIDEO_LINK,
   title: VIDEO_TITLE,
   channelHandle: CHANNEL_HANDLE,

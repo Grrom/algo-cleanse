@@ -1,8 +1,10 @@
 /**
  * MAIN world content script for AlgoCleanse.
- * Inspects YouTube Polymer / Innertube renderer data to identify menu item indices
+ * Inspects YouTube Polymer / Innertube renderer data to identify menu items
  * without relying on localized English label text.
  */
+
+import { SELECTORS } from '../src/platforms/youtube/selectors';
 
 interface FeedbackEndpointData {
   feedbackToken?: string;
@@ -14,7 +16,7 @@ interface ServiceItemData {
   text?: { runs?: { text?: string }[] };
 }
 
-interface MenuItemData {
+export interface MenuItemData {
   menuServiceItemRenderer?: ServiceItemData;
   icon?: { iconType?: string };
   serviceEndpoint?: { feedbackEndpoint?: FeedbackEndpointData };
@@ -34,6 +36,9 @@ export function findMenuDataFromElement(
             menu?: { menuRenderer?: { items?: MenuItemData[] } };
           };
         };
+        videoRenderer?: {
+          menu?: { menuRenderer?: { items?: MenuItemData[] } };
+        };
         menu?: { menuRenderer?: { items?: MenuItemData[] } };
         items?: MenuItemData[];
       }
@@ -41,6 +46,9 @@ export function findMenuDataFromElement(
 
   if (contentRenderer?.content?.videoRenderer?.menu?.menuRenderer?.items) {
     return contentRenderer.content.videoRenderer.menu.menuRenderer.items;
+  }
+  if (contentRenderer?.videoRenderer?.menu?.menuRenderer?.items) {
+    return contentRenderer.videoRenderer.menu.menuRenderer.items;
   }
   if (contentRenderer?.menu?.menuRenderer?.items) {
     return contentRenderer.menu.menuRenderer.items;
@@ -57,6 +65,19 @@ export function findMenuDataFromElement(
               menu?: { menuRenderer?: { items?: MenuItemData[] } };
             };
           };
+          videoRenderer?: {
+            menu?: { menuRenderer?: { items?: MenuItemData[] } };
+          };
+          menu?: { menuRenderer?: { items?: MenuItemData[] } };
+          items?: MenuItemData[];
+        };
+        content?: {
+          videoRenderer?: {
+            menu?: { menuRenderer?: { items?: MenuItemData[] } };
+          };
+        };
+        videoRenderer?: {
+          menu?: { menuRenderer?: { items?: MenuItemData[] } };
         };
         menu?: { menuRenderer?: { items?: MenuItemData[] } };
         items?: MenuItemData[];
@@ -65,6 +86,21 @@ export function findMenuDataFromElement(
 
   if (dataHost?.data?.content?.videoRenderer?.menu?.menuRenderer?.items) {
     return dataHost.data.content.videoRenderer.menu.menuRenderer.items;
+  }
+  if (dataHost?.data?.videoRenderer?.menu?.menuRenderer?.items) {
+    return dataHost.data.videoRenderer.menu.menuRenderer.items;
+  }
+  if (dataHost?.data?.menu?.menuRenderer?.items) {
+    return dataHost.data.menu.menuRenderer.items;
+  }
+  if (dataHost?.data?.items) {
+    return dataHost.data.items;
+  }
+  if (dataHost?.content?.videoRenderer?.menu?.menuRenderer?.items) {
+    return dataHost.content.videoRenderer.menu.menuRenderer.items;
+  }
+  if (dataHost?.videoRenderer?.menu?.menuRenderer?.items) {
+    return dataHost.videoRenderer.menu.menuRenderer.items;
   }
   if (dataHost?.menu?.menuRenderer?.items) {
     return dataHost.menu.menuRenderer.items;
@@ -101,152 +137,181 @@ export function classifyMenuItem(
   return null;
 }
 
+/**
+ * Finds the currently active, open menu popup in the DOM.
+ * Accepts only a dropdown that is actually open (not aria-hidden="true",
+ * not display:none, or [opened]).
+ */
 export function getActivePopup(
   root: Document | Element = document,
 ): Element | null {
-  const openCandidates = root.querySelectorAll(
-    'ytd-menu-popup-renderer[opened], tp-yt-iron-dropdown:not([aria-hidden="true"]), tp-yt-iron-dropdown[opened]',
-  );
-  for (const el of Array.from(openCandidates)) {
-    if (el.tagName.toLowerCase() === 'ytd-menu-popup-renderer') {
+  const candidates = root.querySelectorAll(SELECTORS.openMenuPopup);
+  for (const el of Array.from(candidates)) {
+    if (el.getAttribute('aria-hidden') === 'true') continue;
+    const parentDropdown = el.closest(SELECTORS.menuDropdown);
+    if (
+      parentDropdown &&
+      parentDropdown.getAttribute('aria-hidden') === 'true'
+    ) {
+      continue;
+    }
+
+    const htmlEl = el as HTMLElement;
+    if (htmlEl.style?.display === 'none') continue;
+    const parentHtmlEl = parentDropdown as HTMLElement | null;
+    if (parentHtmlEl?.style?.display === 'none') continue;
+
+    if (el.matches(SELECTORS.menuPopupRenderer)) {
       return el;
     }
-    const innerRenderer = el.querySelector('ytd-menu-popup-renderer');
+    const innerRenderer = el.querySelector(SELECTORS.menuPopupRenderer);
     if (innerRenderer) return innerRenderer;
     return el;
-  }
-
-  const anyPopup = root.querySelector(
-    'ytd-popup-container ytd-menu-popup-renderer, ytd-menu-popup-renderer',
-  );
-  if (anyPopup) return anyPopup;
-
-  const dropdown = root.querySelector(
-    'tp-yt-iron-dropdown, ytd-popup-container',
-  );
-  if (dropdown) return dropdown;
-
-  if (
-    root.querySelector(
-      'ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model',
-    )
-  ) {
-    return root instanceof Element ? root : root.body || root.documentElement;
   }
 
   return null;
 }
 
-export function getTopLevelMenuItems(root: Element): Element[] {
-  const all = Array.from(
-    root.querySelectorAll(
-      'ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model, tp-yt-paper-item',
-    ),
-  );
+export function getTopLevelMenuItems(popup: Element): Element[] {
+  const all = Array.from(popup.querySelectorAll(SELECTORS.menuPopupItems));
   return all.filter((el) => {
-    return !el.parentElement?.closest(
-      'ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, yt-list-item-view-model',
-    );
+    return !el.parentElement?.closest(SELECTORS.menuPopupItems);
   });
 }
 
-export function tagMenuElements(root: Document | Element = document): void {
-  // Clear any existing attributes on items first
-  const allExisting = root.querySelectorAll(
-    'ytd-menu-service-item-renderer, ytd-menu-navigation-item-renderer, tp-yt-paper-item, yt-list-item-view-model',
-  );
-  allExisting.forEach((item) => {
-    item.removeAttribute('data-ac-item-type');
-    item.removeAttribute('data-ac-item-index');
-  });
+/**
+ * Validates that the items in the open popup belong to this tile by comparing
+ * each item's renderer data against findMenuDataFromElement(tile):
+ * same length, and same iconType at each index, or object identity with items[i].menuServiceItemRenderer.
+ */
+export function doPopupItemsMatchTile(
+  popupItems: Element[],
+  tileMenuItems: MenuItemData[] | null,
+): boolean {
+  if (!tileMenuItems || tileMenuItems.length === 0) {
+    return false;
+  }
+  if (popupItems.length !== tileMenuItems.length) {
+    return false;
+  }
 
+  for (let i = 0; i < popupItems.length; i++) {
+    const itemEl = popupItems[i]!;
+    const anyItem = itemEl as unknown as Record<string, unknown>;
+    const popupItemData = (anyItem.data ?? anyItem.__data) as
+      MenuItemData | undefined;
+    const tileItemData = tileMenuItems[i]!;
+
+    if (!popupItemData) {
+      return false;
+    }
+
+    // Check object identity
+    if (
+      popupItemData === tileItemData ||
+      (popupItemData.menuServiceItemRenderer &&
+        popupItemData.menuServiceItemRenderer ===
+          tileItemData.menuServiceItemRenderer) ||
+      popupItemData === tileItemData.menuServiceItemRenderer ||
+      popupItemData.menuServiceItemRenderer === tileItemData
+    ) {
+      continue;
+    }
+
+    // Compare iconType
+    const popupService = popupItemData.menuServiceItemRenderer ?? popupItemData;
+    const tileService = tileItemData.menuServiceItemRenderer ?? tileItemData;
+
+    const popupIcon = popupService?.icon?.iconType;
+    const tileIcon = tileService?.icon?.iconType;
+
+    if (popupIcon && tileIcon && popupIcon === tileIcon) {
+      continue;
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+export function tagMenuElements(root: Document | Element = document): void {
   const popup =
-    root instanceof Element &&
-    root.matches(
-      'ytd-menu-popup-renderer, tp-yt-iron-dropdown, ytd-popup-container',
-    )
+    root instanceof Element && root.matches(SELECTORS.openMenuPopup)
       ? root
       : getActivePopup(root);
   if (!popup) return;
 
+  // Clear any existing attributes on items first
+  const allExisting = popup.querySelectorAll(SELECTORS.menuPopupItems);
+  allExisting.forEach((item) => {
+    item.removeAttribute(SELECTORS.itemTypeAttr);
+  });
+
   const items = getTopLevelMenuItems(popup);
 
-  items.forEach((item, index) => {
+  items.forEach((item) => {
     const anyItem = item as unknown as Record<string, unknown>;
     const itemData = (anyItem.data ?? anyItem.__data) as
       MenuItemData | undefined;
     const classified = classifyMenuItem(itemData);
     if (classified) {
-      item.setAttribute('data-ac-item-type', classified);
-      item.setAttribute('data-ac-item-index', String(index));
+      item.setAttribute(SELECTORS.itemTypeAttr, classified);
     }
   });
 }
 
 export function resolveMenuForTile(resolveId: string): void {
-  const tile = document.querySelector(`[data-ac-resolve-id="${resolveId}"]`);
-  if (tile) {
-    const menuItems = findMenuDataFromElement(tile);
-    if (Array.isArray(menuItems)) {
-      let notInterestedIndex = -1;
-      let dontRecommendIndex = -1;
+  const tile = document.querySelector(
+    `[${SELECTORS.resolveIdAttr}="${resolveId}"]`,
+  );
+  const tileMenuItems = tile ? findMenuDataFromElement(tile) : null;
 
-      menuItems.forEach((mItem, idx) => {
-        const type = classifyMenuItem(mItem);
-        if (type === 'not-interested' && notInterestedIndex === -1) {
-          notInterestedIndex = idx;
-        }
-        if (type === 'dont-recommend' && dontRecommendIndex === -1) {
-          dontRecommendIndex = idx;
-        }
-      });
-
-      tile.setAttribute(
-        'data-ac-menu-indices',
-        JSON.stringify({ notInterestedIndex, dontRecommendIndex }),
-      );
-    }
-  }
-
-  const dispatchDone = () => {
+  const dispatchResult = (status: 'ok' | 'timeout') => {
     window.dispatchEvent(
-      new CustomEvent('ac-menu-resolved', {
-        detail: { resolveId },
+      new CustomEvent(SELECTORS.menuResolvedEvent, {
+        detail: `${resolveId}:${status}`,
       }),
     );
   };
 
   const checkAndTag = (): boolean => {
     const popup = getActivePopup();
-    if (popup) {
-      const items = getTopLevelMenuItems(popup);
-      if (items.length > 0) {
-        tagMenuElements(popup);
-        return true;
-      }
+    if (!popup) return false;
+
+    const items = getTopLevelMenuItems(popup);
+    if (items.length === 0) return false;
+
+    if (!doPopupItemsMatchTile(items, tileMenuItems)) {
+      return false;
     }
-    return false;
+
+    tagMenuElements(popup);
+    return true;
   };
 
   if (checkAndTag()) {
-    dispatchDone();
+    dispatchResult('ok');
     return;
   }
 
+  const timeoutMs =
+    (window as unknown as { __AC_MENU_TIMEOUT_MS__?: number })
+      .__AC_MENU_TIMEOUT_MS__ ?? 1000;
   const startTime = Date.now();
   let settled = false;
 
-  const cleanup = () => {
+  const finish = (status: 'ok' | 'timeout') => {
     if (settled) return;
     settled = true;
     observer.disconnect();
     clearInterval(timer);
-    dispatchDone();
+    dispatchResult(status);
   };
 
   const observer = new MutationObserver(() => {
     if (checkAndTag()) {
-      cleanup();
+      finish('ok');
     }
   });
 
@@ -257,8 +322,10 @@ export function resolveMenuForTile(resolveId: string): void {
   });
 
   const timer = setInterval(() => {
-    if (checkAndTag() || Date.now() - startTime >= 1000) {
-      cleanup();
+    if (checkAndTag()) {
+      finish('ok');
+    } else if (Date.now() - startTime >= timeoutMs) {
+      finish('timeout');
     }
   }, 20);
 }
@@ -268,9 +335,14 @@ export default defineContentScript({
   world: 'MAIN',
   runAt: 'document_start',
   main() {
-    window.addEventListener('ac-resolve-menu', (event: Event) => {
-      const customEvent = event as CustomEvent<{ resolveId?: string }>;
-      const resolveId = customEvent.detail?.resolveId;
+    window.addEventListener(SELECTORS.resolveMenuEvent, (event: Event) => {
+      const customEvent = event as CustomEvent<unknown>;
+      const resolveId =
+        typeof customEvent.detail === 'string'
+          ? customEvent.detail
+          : document
+              .querySelector(`[${SELECTORS.resolveIdAttr}]`)
+              ?.getAttribute(SELECTORS.resolveIdAttr);
       if (resolveId) {
         resolveMenuForTile(resolveId);
       }
@@ -280,12 +352,13 @@ export default defineContentScript({
       'click',
       (e) => {
         const target = e.target as Element | null;
-        if (
-          target?.closest?.(
-            'ytd-menu-renderer, .yt-lockup-view-model-wiz__menu, yt-icon-button',
-          )
-        ) {
-          setTimeout(() => tagMenuElements(document), 50);
+        if (target?.closest?.(SELECTORS.menuClickTarget)) {
+          setTimeout(() => {
+            const popup = getActivePopup();
+            if (popup) {
+              tagMenuElements(popup);
+            }
+          }, 50);
         }
       },
       true,

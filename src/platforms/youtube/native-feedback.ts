@@ -9,138 +9,18 @@ export function isSignedIn(): boolean {
   return document.querySelector(SELECTORS.accountAvatar) !== null;
 }
 
-interface ServiceEndpointData {
-  feedbackEndpoint?: {
-    feedbackToken?: string;
-  };
-}
-
-interface ItemDataShape {
-  icon?: { iconType?: string };
-  serviceEndpoint?: ServiceEndpointData;
-  menuServiceItemRenderer?: {
-    icon?: { iconType?: string };
-    serviceEndpoint?: ServiceEndpointData;
-  };
-}
-
-function classifyData(
-  data: unknown,
-): 'not-interested' | 'dont-recommend' | null {
-  if (!data || typeof data !== 'object') return null;
-  const anyData = data as ItemDataShape;
-  const serviceItem = anyData.menuServiceItemRenderer ?? anyData;
-  const iconType: string = serviceItem?.icon?.iconType ?? '';
-
-  if (iconType === 'NOT_INTERESTED' || iconType.includes('NOT_INTERESTED')) {
-    return 'not-interested';
-  }
-
-  if (
-    iconType === 'REMOVE' ||
-    iconType === 'DONT_RECOMMEND' ||
-    iconType === 'CHANNEL_OFF' ||
-    iconType === 'REMOVE_CHANNEL' ||
-    iconType === 'BLOCK' ||
-    iconType.includes('DONT_RECOMMEND')
-  ) {
-    return 'dont-recommend';
-  }
-
-  return null;
-}
-
-function getItemsFromTileData(tile: Element): unknown[] | null {
-  const anyTile = tile as unknown as {
-    data?: {
-      content?: {
-        videoRenderer?: { menu?: { menuRenderer?: { items?: unknown[] } } };
-      };
-      menu?: { menuRenderer?: { items?: unknown[] } };
-      items?: unknown[];
-    };
-    __data?: {
-      data?: {
-        content?: {
-          videoRenderer?: { menu?: { menuRenderer?: { items?: unknown[] } } };
-        };
-      };
-      menu?: { menuRenderer?: { items?: unknown[] } };
-      items?: unknown[];
-    };
-  };
-
-  const candidates = [
-    anyTile.data?.content?.videoRenderer?.menu?.menuRenderer?.items,
-    anyTile.data?.menu?.menuRenderer?.items,
-    anyTile.__data?.data?.content?.videoRenderer?.menu?.menuRenderer?.items,
-    anyTile.__data?.menu?.menuRenderer?.items,
-    anyTile.data?.items,
-    anyTile.__data?.items,
-  ];
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
 function identifyMatchingItem(
   items: Element[],
-  tile: Element,
   targetAction: 'not-interested' | 'dont-recommend',
 ): Element | null {
   // 1. Check data-ac-item-type attribute (set by MAIN world script)
   for (const item of items) {
-    if (item.getAttribute('data-ac-item-type') === targetAction) {
+    if (item.getAttribute(SELECTORS.itemTypeAttr) === targetAction) {
       return item;
     }
   }
 
-  // 2. Check item.data or item.__data property (jsdom / shared environment fallback)
-  for (const item of items) {
-    const anyItem = item as unknown as { data?: unknown; __data?: unknown };
-    const itemData = anyItem.data ?? anyItem.__data;
-    if (classifyData(itemData) === targetAction) {
-      return item;
-    }
-  }
-
-  // 3. Check data-ac-menu-indices attribute on tile (set by MAIN world script)
-  const attrIndices = tile.getAttribute('data-ac-menu-indices');
-  if (attrIndices) {
-    try {
-      const parsed = JSON.parse(attrIndices) as {
-        notInterestedIndex?: number;
-        dontRecommendIndex?: number;
-      };
-      const idx =
-        targetAction === 'not-interested'
-          ? parsed.notInterestedIndex
-          : parsed.dontRecommendIndex;
-      if (typeof idx === 'number' && idx >= 0 && items[idx]) {
-        return items[idx];
-      }
-    } catch {
-      // Ignore JSON parse error
-    }
-  }
-
-  // 3b. Check tile's menuRenderer renderer data items index (jsdom fallback)
-  const tileItems = getItemsFromTileData(tile);
-  if (Array.isArray(tileItems)) {
-    const targetIndex = tileItems.findIndex(
-      (itemData) => classifyData(itemData) === targetAction,
-    );
-    if (targetIndex >= 0 && items[targetIndex]) {
-      return items[targetIndex];
-    }
-  }
-
-  // 4. Check DOM icons and attributes on each item (strict check)
+  // 2. Check DOM icons and attributes on each item (strict check)
   for (const item of items) {
     const iconEl = item.querySelector(SELECTORS.menuItemIcon);
     const iconAttr = (iconEl?.getAttribute('icon') ?? '').toLowerCase();
@@ -156,7 +36,7 @@ function identifyMatchingItem(
     }
   }
 
-  // 5. Last-resort fallback: localized English text
+  // 3. Last-resort fallback: localized English text
   for (const item of items) {
     const text = (item.textContent ?? '').trim().toLowerCase();
     if (targetAction === 'not-interested') {
@@ -226,7 +106,7 @@ async function sendFeedbackAction(
   }
 
   const resolveId = `ac-res-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  tile.setAttribute('data-ac-resolve-id', resolveId);
+  tile.setAttribute(SELECTORS.resolveIdAttr, resolveId);
 
   const wasCollapsed = tile.classList.contains(SELECTORS.collapsedClass);
   if (wasCollapsed) {
@@ -234,43 +114,60 @@ async function sendFeedbackAction(
   }
 
   try {
+    const timeoutMs =
+      (window as unknown as { __AC_FEEDBACK_TIMEOUT_MS__?: number })
+        .__AC_FEEDBACK_TIMEOUT_MS__ ?? 1500;
+
     // 1. Prepare waiting for ac-menu-resolved reply from MAIN world script
-    const resolvedPromise = new Promise<boolean>((resolve) => {
+    const resolvedPromise = new Promise<'ok' | 'timeout'>((resolve) => {
       const handler = (event: Event) => {
-        const customEvent = event as CustomEvent<{ resolveId?: string }>;
-        if (customEvent.detail?.resolveId === resolveId) {
-          window.removeEventListener('ac-menu-resolved', handler);
-          resolve(true);
+        const customEvent = event as CustomEvent<unknown>;
+        const detail =
+          typeof customEvent.detail === 'string' ? customEvent.detail : '';
+        if (detail.startsWith(resolveId)) {
+          window.removeEventListener(SELECTORS.menuResolvedEvent, handler);
+          if (detail.endsWith(':ok')) {
+            resolve('ok');
+          } else {
+            resolve('timeout');
+          }
         }
       };
-      window.addEventListener('ac-menu-resolved', handler);
+      window.addEventListener(SELECTORS.menuResolvedEvent, handler);
       setTimeout(() => {
-        window.removeEventListener('ac-menu-resolved', handler);
-        resolve(false);
-      }, 1200);
+        window.removeEventListener(SELECTORS.menuResolvedEvent, handler);
+        resolve('timeout');
+      }, timeoutMs);
     });
 
     // 2. Open the tile menu (single click)
     menuButton.click();
 
-    // 3. Dispatch ac-resolve-menu with resolveId
+    // 3. Dispatch ac-resolve-menu with resolveId as a primitive string
     window.dispatchEvent(
-      new CustomEvent('ac-resolve-menu', {
-        detail: { resolveId },
+      new CustomEvent(SELECTORS.resolveMenuEvent, {
+        detail: resolveId,
         bubbles: true,
       }),
     );
 
     // 4. Await response from MAIN world script
     const resolved = await resolvedPromise;
-    if (!resolved) {
+    if (resolved !== 'ok') {
       closeLeftoverPopups();
       return 'unavailable';
     }
 
-    // 5. Query popup items
+    // 5. Query open popup container
+    const openPopup = document.querySelector(SELECTORS.openMenuPopup);
+    if (!openPopup) {
+      closeLeftoverPopups();
+      return 'unavailable';
+    }
+
+    // 6. Query popup items scoped strictly inside the open popup
     const items = Array.from(
-      document.querySelectorAll(SELECTORS.menuPopupItems),
+      openPopup.querySelectorAll(SELECTORS.menuPopupItems),
     ).filter(
       (el) =>
         !el.parentElement ||
@@ -281,21 +178,21 @@ async function sendFeedbackAction(
       return 'unavailable';
     }
 
-    // 6. Identify the matching item from renderer data / tags
-    const matchedItem = identifyMatchingItem(items, tile, action);
+    // 7. Identify the matching item from renderer data tags
+    const matchedItem = identifyMatchingItem(items, action);
     if (!matchedItem) {
       closeLeftoverPopups();
       return 'unavailable';
     }
 
-    // 7. Click the matched item (or its inner clickable element)
+    // 8. Click the matched item (or its inner clickable element)
     const clickable =
       (matchedItem.querySelector(
         SELECTORS.menuItemButton,
       ) as HTMLElement | null) ?? (matchedItem as HTMLElement);
     clickable.click();
 
-    // 8. Close any leftover popup
+    // 9. Close any leftover popup
     closeLeftoverPopups();
 
     return 'ok';
@@ -303,7 +200,7 @@ async function sendFeedbackAction(
     console.error(`Error in sendFeedbackAction (${action}):`, err);
     return 'failed';
   } finally {
-    tile.removeAttribute('data-ac-resolve-id');
+    tile.removeAttribute(SELECTORS.resolveIdAttr);
     if (wasCollapsed) {
       tile.classList.remove('ac-menu-operating');
     }

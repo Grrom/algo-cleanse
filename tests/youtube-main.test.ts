@@ -18,14 +18,16 @@ describe('entrypoints/youtube-main.content', () => {
       await import('../entrypoints/youtube-main.content');
 
     document.body.innerHTML = `
-      <div id="container">
-        <ytd-menu-service-item-renderer id="item1">
-          <span>Pas intéressé</span>
-        </ytd-menu-service-item-renderer>
-        <ytd-menu-service-item-renderer id="item2">
-          <span>Ne pas recommander la chaîne</span>
-        </ytd-menu-service-item-renderer>
-      </div>
+      <tp-yt-iron-dropdown opened>
+        <ytd-menu-popup-renderer opened id="container">
+          <ytd-menu-service-item-renderer id="item1">
+            <span>Pas intéressé</span>
+          </ytd-menu-service-item-renderer>
+          <ytd-menu-service-item-renderer id="item2">
+            <span>Ne pas recommander la chaîne</span>
+          </ytd-menu-service-item-renderer>
+        </ytd-menu-popup-renderer>
+      </tp-yt-iron-dropdown>
     `;
 
     const item1 = document.getElementById('item1') as unknown as Record<
