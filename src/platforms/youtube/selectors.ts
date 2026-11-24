@@ -163,6 +163,67 @@ export const PROCESSED_TILE_SELECTOR = `[${DATA_AC_VIDEO_ID}]` as const;
 export const YT_NAVIGATE_FINISH_EVENT = 'yt-navigate-finish' as const;
 
 /**
+ * CSS class added to collapsed video tiles.
+ */
+export const AC_COLLAPSED_CLASS = 'ac-collapsed' as const;
+
+/**
+ * CSS selector matching collapsed video tiles.
+ */
+export const AC_COLLAPSED_SELECTOR = '.ac-collapsed' as const;
+
+/**
+ * Attribute name and selector for AlgoCleanse collapsed card.
+ */
+export const AC_CARD_ATTR = 'data-ac-card' as const;
+export const AC_CARD_SELECTOR = `[${AC_CARD_ATTR}]` as const;
+
+/**
+ * Action button attributes and selectors.
+ */
+export const AC_ACTION_ATTR = 'data-ac-action' as const;
+export const AC_ACTION_SELECTOR = `[${AC_ACTION_ATTR}]` as const;
+export const AC_SHOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="show"]` as const;
+export const AC_ALLOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="allow"]` as const;
+export const AC_BLOCK_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="block"]` as const;
+
+/**
+ * Actions container attribute and selector.
+ */
+export const AC_ACTIONS_ATTR = 'data-ac-actions' as const;
+export const AC_ACTIONS_SELECTOR = `[${AC_ACTIONS_ATTR}]` as const;
+
+/**
+ * Extra actions container attribute and selector.
+ */
+export const AC_ACTIONS_EXTRA_ATTR = 'data-ac-actions-extra' as const;
+export const AC_ACTIONS_EXTRA_SELECTOR = `[${AC_ACTIONS_EXTRA_ATTR}]` as const;
+
+/**
+ * Card status container attribute and selector.
+ */
+export const AC_STATUS_ATTR = 'data-ac-status' as const;
+export const AC_STATUS_SELECTOR = `[${AC_STATUS_ATTR}]` as const;
+
+/**
+ * Reason chip attributes and selectors.
+ */
+export const AC_CHIP_ATTR = 'data-ac-chip' as const;
+export const AC_CHIP_SELECTOR = `[${AC_CHIP_ATTR}]` as const;
+export const AC_CHIPS_ATTR = 'data-ac-chips' as const;
+export const AC_CHIPS_SELECTOR = `[${AC_CHIPS_ATTR}]` as const;
+
+/**
+ * Card elements attributes and selectors.
+ */
+export const AC_HEADER_ATTR = 'data-ac-header' as const;
+export const AC_HEADER_SELECTOR = `[${AC_HEADER_ATTR}]` as const;
+export const AC_TITLE_ATTR = 'data-ac-title' as const;
+export const AC_TITLE_SELECTOR = `[${AC_TITLE_ATTR}]` as const;
+export const AC_CHANNEL_ATTR = 'data-ac-channel' as const;
+export const AC_CHANNEL_SELECTOR = `[${AC_CHANNEL_ATTR}]` as const;
+
+/**
  * Centralized SELECTORS object.
  */
 export const SELECTORS = {
@@ -184,4 +245,29 @@ export const SELECTORS = {
   videoIdAttr: DATA_AC_VIDEO_ID,
   processedTile: PROCESSED_TILE_SELECTOR,
   navigateFinishEvent: YT_NAVIGATE_FINISH_EVENT,
+  collapsedClass: AC_COLLAPSED_CLASS,
+  collapsedSelector: AC_COLLAPSED_SELECTOR,
+  cardAttr: AC_CARD_ATTR,
+  card: AC_CARD_SELECTOR,
+  actionAttr: AC_ACTION_ATTR,
+  action: AC_ACTION_SELECTOR,
+  showAction: AC_SHOW_ACTION_SELECTOR,
+  allowAction: AC_ALLOW_ACTION_SELECTOR,
+  blockAction: AC_BLOCK_ACTION_SELECTOR,
+  actionsContainerAttr: AC_ACTIONS_ATTR,
+  actionsContainer: AC_ACTIONS_SELECTOR,
+  actionsExtraAttr: AC_ACTIONS_EXTRA_ATTR,
+  actionsExtra: AC_ACTIONS_EXTRA_SELECTOR,
+  statusAttr: AC_STATUS_ATTR,
+  status: AC_STATUS_SELECTOR,
+  chipAttr: AC_CHIP_ATTR,
+  chip: AC_CHIP_SELECTOR,
+  chipsAttr: AC_CHIPS_ATTR,
+  chips: AC_CHIPS_SELECTOR,
+  cardHeaderAttr: AC_HEADER_ATTR,
+  cardHeader: AC_HEADER_SELECTOR,
+  cardTitleAttr: AC_TITLE_ATTR,
+  cardTitle: AC_TITLE_SELECTOR,
+  cardChannelAttr: AC_CHANNEL_ATTR,
+  cardChannel: AC_CHANNEL_SELECTOR,
 } as const;

@@ -1,0 +1,194 @@
+/* AlgoCleanse Content Styles */
+
+/* When tile is collapsed, hide original children except AlgoCleanse card */
+.ac-collapsed > :not([data-ac-card]) {
+  display: none !important;
+}
+
+.ac-collapsed {
+  min-height: unset !important;
+}
+
+/* Ensure video tile containers have relative positioning for hover buttons */
+ytd-rich-item-renderer,
+yt-lockup-view-model,
+ytd-video-renderer,
+ytd-compact-video-renderer,
+ytd-grid-video-renderer {
+  position: relative;
+}
+
+/* Collapsed card container */
+[data-ac-card],
+.ac-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  margin: 8px 0;
+  border-radius: 12px;
+  border: 1px dashed var(--yt-spec-outline, rgba(128, 128, 128, 0.4));
+  background: var(
+    --yt-spec-raised-background,
+    var(--yt-spec-general-background-a, #1f1f1f)
+  );
+  color: var(--yt-spec-text-primary, #ffffff);
+  font-family: 'Roboto', 'Arial', sans-serif;
+}
+
+/* Card header */
+.ac-card-header,
+[data-ac-header] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--yt-spec-text-secondary, #aaaaaa);
+}
+
+.ac-header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff9800;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Struck-through original title */
+.ac-card-title,
+[data-ac-title] {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--yt-spec-text-secondary, #888888);
+  word-break: break-word;
+}
+
+.ac-card-title s,
+[data-ac-title] s {
+  text-decoration: line-through;
+}
+
+/* Channel & duration line */
+.ac-card-channel,
+[data-ac-channel] {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--yt-spec-text-secondary, #aaaaaa);
+}
+
+/* Reason chips */
+.ac-card-chips,
+[data-ac-chips] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ac-chip,
+[data-ac-chip] {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--yt-spec-badge-chip-background, rgba(128, 128, 128, 0.2));
+  color: var(--yt-spec-text-primary, #ffffff);
+}
+
+/* Card actions button row */
+.ac-card-actions,
+[data-ac-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ac-btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 18px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s;
+}
+
+.ac-btn-show,
+[data-ac-action='show'] {
+  background: var(--yt-spec-text-primary, #ffffff);
+  color: var(--yt-spec-base-background, #0f0f0f);
+  border: none;
+}
+
+.ac-btn-show:hover,
+[data-ac-action='show']:hover {
+  opacity: 0.9;
+}
+
+.ac-btn-allow,
+[data-ac-action='allow'] {
+  background: var(--yt-spec-badge-chip-background, rgba(128, 128, 128, 0.2));
+  color: var(--yt-spec-text-primary, #ffffff);
+  border: 1px solid var(--yt-spec-outline, rgba(128, 128, 128, 0.4));
+}
+
+.ac-btn-allow:hover,
+[data-ac-action='allow']:hover {
+  background: var(--yt-spec-10-percent-layer, rgba(128, 128, 128, 0.3));
+}
+
+.ac-actions-extra,
+[data-ac-actions-extra] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Card status line */
+.ac-card-status,
+[data-ac-status] {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--yt-spec-text-secondary, #aaaaaa);
+}
+
+/* Block channel hover button on clean tiles */
+.ac-btn-block,
+[data-ac-action='block'] {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+}
+
+:hover > [data-ac-action='block'],
+:hover [data-ac-action='block'] {
+  display: inline-flex;
+}
+
+.ac-collapsed [data-ac-action='block'],
+.ac-collapsed > [data-ac-action='block'] {
+  display: none !important;
+}
