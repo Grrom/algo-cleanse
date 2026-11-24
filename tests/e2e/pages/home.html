@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Home E2E Fixture</title>
+    <style>
+      ytd-app,
+      ytd-page-manager,
+      ytd-browse,
+      ytd-two-column-browse-results-renderer,
+      ytd-rich-grid-renderer,
+      ytd-rich-item-renderer,
+      ytd-rich-shelf-renderer,
+      ytd-reel-shelf-renderer,
+      ytd-video-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model {
+        display: block;
+      }
+      ytd-rich-item-renderer {
+        width: 360px;
+        margin: 16px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <ytd-app>
+      <div id="content">
+        <ytd-page-manager>
+          <ytd-browse>
+            <ytd-two-column-browse-results-renderer>
+              <div id="primary">
+                <ytd-rich-grid-renderer>
+                  <div id="contents">
+                    <!-- Video Tile 1: Clickbait Rich Item Renderer -->
+                    <ytd-rich-item-renderer
+                      class="style-scope ytd-rich-grid-row"
+                      id="clickbait-tile"
+                    >
+                      <div id="content">
+                        <ytd-rich-grid-media>
+                          <div id="thumbnail">
+                            <a
+                              id="thumbnail"
+                              class="yt-simple-endpoint inline-block style-scope ytd-thumbnail"
+                              href="/watch?v=clickbait001"
+                            >
+                              <span
+                                class="ytd-thumbnail-overlay-time-status-renderer"
+                                >18:02</span
+                              >
+                            </a>
+                          </div>
+                          <div id="details">
+                            <div id="meta">
+                              <h3 class="style-scope ytd-rich-grid-media">
+                                <a
+                                  id="video-title-link"
+                                  class="yt-simple-endpoint style-scope ytd-rich-grid-media"
+                                  title="I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG) 😱😱😱!!!"
+                                  href="/watch?v=clickbait001"
+                                >
+                                  <yt-formatted-string id="video-title"
+                                    >I SPENT 24 HOURS IN AN ABANDONED BUNKER
+                                    (GONE WRONG) 😱😱😱!!!</yt-formatted-string
+                                  >
+                                </a>
+                              </h3>
+                              <div id="channel-info">
+                                <ytd-channel-name id="channel-name">
+                                  <div id="container">
+                                    <div id="text-container">
+                                      <yt-formatted-string
+                                        id="text"
+                                        title="Extreme Vlogs"
+                                      >
+                                        <a
+                                          class="yt-simple-endpoint style-scope yt-formatted-string"
+                                          href="/@ExtremeVlogs"
+                                          >Extreme Vlogs</a
+                                        >
+                                      </yt-formatted-string>
+                                    </div>
+                                  </div>
+                                </ytd-channel-name>
+                              </div>
+                            </div>
+                            <div id="menu">
+                              <ytd-menu-renderer>
+                                <yt-icon-button id="button">
+                                  <button aria-label="Action menu">⋮</button>
+                                </yt-icon-button>
+                              </ytd-menu-renderer>
+                            </div>
+                          </div>
+                        </ytd-rich-grid-media>
+                      </div>
+                    </ytd-rich-item-renderer>
+
+                    <!-- Video Tile 2: Clean Rich Item Renderer -->
+                    <ytd-rich-item-renderer
+                      class="style-scope ytd-rich-grid-row"
+                      id="clean-tile"
+                    >
+                      <div id="content">
+                        <ytd-rich-grid-media>
+                          <div id="thumbnail">
+                            <a
+                              id="thumbnail"
+                              class="yt-simple-endpoint inline-block style-scope ytd-thumbnail"
+                              href="/watch?v=clean001"
+                            >
+                              <span
+                                class="ytd-thumbnail-overlay-time-status-renderer"
+                                >14:20</span
+                              >
+                            </a>
+                          </div>
+                          <div id="details">
+                            <div id="meta">
+                              <h3 class="style-scope ytd-rich-grid-media">
+                                <a
+                                  id="video-title-link"
+                                  class="yt-simple-endpoint style-scope ytd-rich-grid-media"
+                                  title="Building a Modern Extension from Scratch"
+                                  href="/watch?v=clean001"
+                                >
+                                  <yt-formatted-string id="video-title"
+                                    >Building a Modern Extension from
+                                    Scratch</yt-formatted-string
+                                  >
+                                </a>
+                              </h3>
+                              <div id="channel-info">
+                                <ytd-channel-name id="channel-name">
+                                  <div id="container">
+                                    <div id="text-container">
+                                      <yt-formatted-string
+                                        id="text"
+                                        title="Dev Mastery"
+                                      >
+                                        <a
+                                          class="yt-simple-endpoint style-scope yt-formatted-string"
+                                          href="/@DevMastery"
+                                          >Dev Mastery</a
+                                        >
+                                      </yt-formatted-string>
+                                    </div>
+                                  </div>
+                                </ytd-channel-name>
+                              </div>
+                            </div>
+                            <div id="menu">
+                              <ytd-menu-renderer>
+                                <yt-icon-button id="button">
+                                  <button aria-label="Action menu">⋮</button>
+                                </yt-icon-button>
+                              </ytd-menu-renderer>
+                            </div>
+                          </div>
+                        </ytd-rich-grid-media>
+                      </div>
+                    </ytd-rich-item-renderer>
+
+                    <!-- Shorts Shelf -->
+                    <ytd-rich-shelf-renderer
+                      is-shorts
+                      class="style-scope ytd-rich-grid-renderer"
+                      id="shorts-shelf"
+                    >
+                      <div id="dismissible">
+                        <div id="contents">
+                          <ytd-reel-shelf-renderer>
+                            <div id="items">
+                              <ytm-shorts-lockup-view-model
+                                class="ytm-shorts-lockup-view-model"
+                              >
+                                <a
+                                  href="/shorts/shortVid001"
+                                  title="Quick Python Trick You Never Knew #shorts"
+                                >
+                                  <h3 class="shorts-title">
+                                    Quick Python Trick You Never Knew #shorts
+                                  </h3>
+                                </a>
+                                <div class="shorts-channel">
+                                  <a href="/@QuickCoder">Quick Coder</a>
+                                </div>
+                                <div class="shorts-menu">
+                                  <button aria-label="More actions">⋮</button>
+                                </div>
+                              </ytm-shorts-lockup-view-model>
+                            </div>
+                          </ytd-reel-shelf-renderer>
+                        </div>
+                      </div>
+                    </ytd-rich-shelf-renderer>
+                  </div>
+                </ytd-rich-grid-renderer>
+              </div>
+            </ytd-two-column-browse-results-renderer>
+          </ytd-browse>
+        </ytd-page-manager>
+      </div>
+    </ytd-app>
+  </body>
+</html>
