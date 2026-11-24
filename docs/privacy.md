@@ -4,7 +4,7 @@ AlgoCleanse is designed with privacy as a foundational principle. Our goal is to
 
 ## Summary
 
-- **Local-First Architecture:** Your personal channel blocks, allowlists, and extension settings reside on your own device and are never sent to our servers.
+- **Local-First & Private Storage:** Your personal channel lists stay exclusively on your device. General settings are stored in browser storage (synced only across your own devices via Chrome Sync or Firefox Sync if enabled). Nothing in storage is ever sent to AlgoCleanse's servers.
 - **Opt-In Feedback Only:** Anonymous feedback to improve clickbait detection patterns is disabled by default and sent only with your explicit consent.
 - **No Personal Identifiers:** We do not collect names, email addresses, Google accounts, cookies, or unique installation identifiers.
 - **No IP Storage:** Our servers process requests in memory and never store client IP addresses in database records or logs.
@@ -15,11 +15,11 @@ AlgoCleanse is designed with privacy as a foundational principle. Our goal is to
 
 AlgoCleanse stores minimal configuration data required for the extension to operate:
 
-- **Extension Settings:** Your preferences, including extension enabled/disabled state, strictness level (`gentle`, `balanced`, `strict`), Shorts visibility, auto "Not interested" toggles and selected categories, "Don't recommend channel on block" toggle, and feedback consent status (`unset`, `granted`, or `denied`).
-- **Channel Lists:** Your personal blocked channels (`blockedChannels`) and always-allowed channels (`allowedChannels`).
-- **Auto Counters:** Local timestamps and counters tracking the daily cap (maximum 40 per day) and pacing of automated "Not interested" requests.
+- **Synced Extension Settings:** Your general preferences—including extension enabled/disabled state, strictness level (`gentle`, `balanced`, `strict`), Shorts visibility, auto "Not interested" toggles and selected categories, "Don't recommend channel on block" toggle, and feedback consent status (`unset`, `granted`, or `denied`)—are stored in browser sync storage (`browser.storage.sync`). If you use your browser's account synchronization (such as Chrome Sync or Firefox Sync), your browser vendor syncs these settings across your own signed-in devices.
+- **Local Channel Lists:** Your personal blocked channels (`blockedChannels`) and always-allowed channels (`allowedChannels`) are stored exclusively on your device using local storage (`browser.storage.local`). They are never synchronized across devices.
+- **Local Auto Counters:** Local timestamps and counters tracking the daily cap (maximum 40 per day) and pacing of automated "Not interested" requests are stored exclusively on your device in local storage.
 
-This information is saved locally using browser storage APIs (`storage.sync` and `storage.local`) on your device. It is never transmitted to our backend servers.
+Neither synced settings nor local channel lists or counters are ever transmitted to AlgoCleanse's backend servers.
 
 ## What Is Fetched from Our Servers
 
@@ -90,7 +90,6 @@ No user IDs, IP addresses, viewing history, or other page contents are included 
 
 ## Contact
 
-If you have questions or concerns about this privacy policy or our privacy practices, please contact us at:
+If you have questions or concerns about this privacy policy or our privacy practices:
 
-- Email: `privacy@algocleanse.org`
-- Project Repository: `https://github.com/Grrom/algo-cleanse`
+- Privacy Contact: TBD (owner to fill in before store submission)

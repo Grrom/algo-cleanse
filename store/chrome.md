@@ -36,6 +36,6 @@ Required to store user preferences (strictness levels, category selections, Shor
 
 Required to schedule periodic background checks every 12 hours to retrieve updated detection pattern rules from the API.
 
-### Host Permissions / Content Scripts (`*://www.youtube.com/*`)
+### Content scripts (`*://www.youtube.com/*`)
 
-Required to analyze video titles and metadata on YouTube pages, collapse flagged video cards, remove Shorts components, and execute user-initiated "Not interested" or "Don't recommend channel" actions.
+Required to analyze video titles and metadata on YouTube pages, collapse flagged video cards, remove Shorts components, execute "Not interested" actions the user clicks or has opted into for chosen categories, and execute "Don't recommend channel" when the user blocks a channel.

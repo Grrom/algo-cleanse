@@ -42,5 +42,14 @@ describe('Privacy policy documentation', () => {
     // Describes that channel blocks are never sent
     expect(content.toLowerCase()).toContain('never sent');
     expect(content.toLowerCase()).toContain('block');
+
+    // Describes local storage vs synced storage
+    expect(content).toContain('storage.sync');
+    expect(content).toContain('storage.local');
+
+    // Contains contact placeholder
+    expect(content).toContain(
+      'Privacy Contact: TBD (owner to fill in before store submission)',
+    );
   });
 });

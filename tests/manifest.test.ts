@@ -17,15 +17,26 @@ const firefoxManifestPath = path.resolve(
   '.output/firefox-mv3/manifest.json',
 );
 
+function shouldRebuild(manifestPath: string): boolean {
+  if (!fs.existsSync(manifestPath)) return true;
+  try {
+    const configStat = fs.statSync(path.resolve(rootDir, 'wxt.config.ts'));
+    const manifestStat = fs.statSync(manifestPath);
+    return manifestStat.mtimeMs < configStat.mtimeMs;
+  } catch {
+    return true;
+  }
+}
+
 function ensureBuiltFirefoxManifest() {
-  if (!fs.existsSync(firefoxManifestPath)) {
+  if (shouldRebuild(firefoxManifestPath)) {
     execSync('npm run build:firefox', { cwd: rootDir, stdio: 'pipe' });
   }
   return JSON.parse(fs.readFileSync(firefoxManifestPath, 'utf8'));
 }
 
 function ensureBuiltChromeManifest() {
-  if (!fs.existsSync(chromeManifestPath)) {
+  if (shouldRebuild(chromeManifestPath)) {
     execSync('npm run build', { cwd: rootDir, stdio: 'pipe' });
   }
   return JSON.parse(fs.readFileSync(chromeManifestPath, 'utf8'));
@@ -63,9 +74,11 @@ describe('manifest configuration', () => {
     const dataCollection = gecko.data_collection_permissions;
     // Required list declares none (no required data collection)
     expect(dataCollection.required).toEqual(['none']);
-    // Feedback data is declared optional
-    expect(Array.isArray(dataCollection.optional)).toBe(true);
-    expect(dataCollection.optional).toContain('technicalAndInteraction');
+    // Feedback data is declared optional (technical & interaction plus website content)
+    expect(dataCollection.optional).toEqual([
+      'technicalAndInteraction',
+      'websiteContent',
+    ]);
   });
 
   // Acceptance criterion: Icons in all four sizes referenced by the manifest
