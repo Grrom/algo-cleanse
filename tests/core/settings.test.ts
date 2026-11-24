@@ -3,9 +3,11 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
   allowChannel,
   blockChannel,
+  CHANNELS_KEY,
   getSettings,
   normalizeChannelHandle,
   removeChannel,
+  SETTINGS_KEY,
   setAutoCategory,
   updateSettings,
   watchSettings,
@@ -34,9 +36,9 @@ describe('Settings storage with defaults and change subscription', () => {
     emptySettings.blockedChannels.push('@test');
     expect(DEFAULT_SETTINGS.blockedChannels).toEqual([]);
 
-    // Partial stored settings merged with defaults (unknown keys dropped)
+    // Partial stored settings merged with defaults (unknown keys dropped, wrong types replaced)
     await fakeBrowser.storage.sync.set({
-      settings: {
+      [SETTINGS_KEY]: {
         enabled: false,
         strictness: 'strict',
         unknownKey: 'drop-me',
@@ -95,12 +97,17 @@ describe('Settings storage with defaults and change subscription', () => {
     settings = await getSettings();
     expect(settings.allowedChannels).toEqual(['@alloweddup']);
 
-    // 1001st entry drops the oldest in blockedChannels
+    // 1001st entry drops the oldest in blockedChannels (seed directly to local.channels)
     const thousandBlocked = Array.from(
       { length: 1000 },
       (_, i) => `@chan-${i}`,
     );
-    await updateSettings({ blockedChannels: thousandBlocked });
+    await fakeBrowser.storage.local.set({
+      [CHANNELS_KEY]: {
+        blockedChannels: thousandBlocked,
+        allowedChannels: [],
+      },
+    });
 
     await blockChannel('chan-1000'); // 1001st entry
     settings = await getSettings();
@@ -111,12 +118,17 @@ describe('Settings storage with defaults and change subscription', () => {
       '@chan-1000',
     );
 
-    // 1001st entry drops the oldest in allowedChannels
+    // 1001st entry drops the oldest in allowedChannels (seed directly to local.channels)
     const thousandAllowed = Array.from(
       { length: 1000 },
       (_, i) => `@allowed-${i}`,
     );
-    await updateSettings({ allowedChannels: thousandAllowed });
+    await fakeBrowser.storage.local.set({
+      [CHANNELS_KEY]: {
+        blockedChannels: settings.blockedChannels,
+        allowedChannels: thousandAllowed,
+      },
+    });
 
     await allowChannel('allowed-1000'); // 1001st entry
     settings = await getSettings();
@@ -170,6 +182,132 @@ describe('Settings storage with defaults and change subscription', () => {
 
     await updateSettings({ enabled: true });
     expect(received).toHaveLength(1); // Callback was not called after unsubscribe
+  });
+
+  // After blockChannel/allowChannel, the lists are in storage.local key channels, and storage.sync key settings contains no blockedChannels/allowedChannels field
+  it('After blockChannel/allowChannel, the lists are in storage.local key channels, and storage.sync key settings contains no blockedChannels/allowedChannels field', async () => {
+    await blockChannel('Foo');
+    await allowChannel('Bar');
+
+    const localData = await fakeBrowser.storage.local.get(CHANNELS_KEY);
+    expect(localData[CHANNELS_KEY]).toEqual({
+      blockedChannels: ['@foo'],
+      allowedChannels: ['@bar'],
+    });
+
+    // Assert sync item was not created by lists-only changes
+    const syncDataBefore = await fakeBrowser.storage.sync.get(SETTINGS_KEY);
+    expect(syncDataBefore[SETTINGS_KEY]).toBeUndefined();
+
+    // Now seed sync.settings and verify subsequent lists-only changes do not change sync.settings
+    await fakeBrowser.storage.sync.set({
+      [SETTINGS_KEY]: { enabled: true, strictness: 'gentle' },
+    });
+
+    await blockChannel('Baz');
+
+    const syncDataAfter = await fakeBrowser.storage.sync.get(SETTINGS_KEY);
+    const syncItemAfter = syncDataAfter[SETTINGS_KEY] as Record<
+      string,
+      unknown
+    >;
+    expect(syncItemAfter).toEqual({
+      enabled: true,
+      strictness: 'gentle',
+    });
+    expect('blockedChannels' in syncItemAfter).toBe(false);
+    expect('allowedChannels' in syncItemAfter).toBe(false);
+
+    const localDataAfter = (await fakeBrowser.storage.local.get(
+      CHANNELS_KEY,
+    )) as {
+      [CHANNELS_KEY]: { blockedChannels: string[]; allowedChannels: string[] };
+    };
+    expect(localDataAfter[CHANNELS_KEY]).toEqual({
+      blockedChannels: ['@foo', '@baz'],
+      allowedChannels: ['@bar'],
+    });
+  });
+
+  // With 1000 handles in each list, updateSettings({ enabled: false }) succeeds and the JSON of the sync.settings item plus its key is under 8192 bytes
+  it('With 1000 handles in each list, updateSettings({ enabled: false }) succeeds and the JSON of the sync.settings item plus its key is under 8192 bytes', async () => {
+    const thousandBlocked = Array.from(
+      { length: 1000 },
+      (_, i) => `@block-${i}`,
+    );
+    const thousandAllowed = Array.from(
+      { length: 1000 },
+      (_, i) => `@allow-${i}`,
+    );
+
+    await fakeBrowser.storage.local.set({
+      [CHANNELS_KEY]: {
+        blockedChannels: thousandBlocked,
+        allowedChannels: thousandAllowed,
+      },
+    });
+
+    // updateSettings({ enabled: false }) succeeds
+    const updated = await updateSettings({ enabled: false });
+    expect(updated.enabled).toBe(false);
+    expect(updated.blockedChannels).toHaveLength(1000);
+    expect(updated.allowedChannels).toHaveLength(1000);
+
+    const syncData = await fakeBrowser.storage.sync.get(SETTINGS_KEY);
+    const syncItem = syncData[SETTINGS_KEY] as Record<string, unknown>;
+    expect(syncItem).toBeDefined();
+    expect('blockedChannels' in syncItem).toBe(false);
+    expect('allowedChannels' in syncItem).toBe(false);
+
+    const encodedSize = new TextEncoder().encode(
+      SETTINGS_KEY + JSON.stringify(syncItem),
+    ).length;
+    expect(encodedSize).toBeLessThan(8192);
+
+    // Verify local storage lists remain intact
+    const localData = (await fakeBrowser.storage.local.get(CHANNELS_KEY)) as {
+      [CHANNELS_KEY]: { blockedChannels: string[]; allowedChannels: string[] };
+    };
+    expect(localData[CHANNELS_KEY].blockedChannels).toHaveLength(1000);
+    expect(localData[CHANNELS_KEY].allowedChannels).toHaveLength(1000);
+  });
+
+  // watchSettings fires when local.channels changes (e.g. after blockChannel) and does not fire for a change to an unrelated local key
+  it('watchSettings fires when local.channels changes (e.g. after blockChannel) and does not fire for a change to an unrelated local key', async () => {
+    const received: Settings[] = [];
+    const unsubscribe = watchSettings((s) => {
+      received.push(s);
+    });
+
+    await blockChannel('x');
+    expect(received).toHaveLength(1);
+    expect(received[0]?.blockedChannels).toEqual(['@x']);
+
+    // Unrelated local key change must not fire the callback
+    await fakeBrowser.storage.local.set({ other: 1 });
+    expect(received).toHaveLength(1);
+
+    // Unrelated sync key change must not fire the callback
+    await fakeBrowser.storage.sync.set({ unrelated: 'value' });
+    expect(received).toHaveLength(1);
+
+    unsubscribe();
+  });
+
+  // List fields present in the sync.settings item are ignored by getSettings
+  it('List fields present in the sync.settings item are ignored by getSettings', async () => {
+    await fakeBrowser.storage.sync.set({
+      [SETTINGS_KEY]: {
+        enabled: false,
+        blockedChannels: ['@stale'],
+        allowedChannels: ['@stale2'],
+      },
+    });
+
+    const settings = await getSettings();
+    expect(settings.enabled).toBe(false);
+    expect(settings.blockedChannels).toEqual([]);
+    expect(settings.allowedChannels).toEqual([]);
   });
 
   // removeChannel removes handle from both block and allow lists
