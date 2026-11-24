@@ -81,6 +81,33 @@ export const SHORTS_SELECTORS = [
 export const SHORTS_SELECTOR = SHORTS_SELECTORS.join(', ');
 
 /**
+ * Class name applied to hidden Shorts elements.
+ */
+export const HIDDEN_SHORTS_CLASS = 'ac-hidden-shorts' as const;
+
+/**
+ * Selector matching elements hidden by the Shorts remover.
+ */
+export const HIDDEN_SHORTS_SELECTOR = '.ac-hidden-shorts' as const;
+
+/**
+ * Selector matching anchor links to Shorts videos or pages.
+ */
+export const SHORTS_LINK = 'a[href*="/shorts/"], a[href^="/shorts"]' as const;
+
+/**
+ * Guide navigation entry renderer elements.
+ */
+export const SHORTS_GUIDE_ENTRY =
+  'ytd-guide-entry-renderer, ytd-mini-guide-entry-renderer' as const;
+
+/**
+ * Direct link selector for Shorts guide entries (fallback when :has is unsupported).
+ */
+export const SHORTS_GUIDE_LINK =
+  'ytd-guide-entry-renderer a[href^="/shorts"], ytd-mini-guide-entry-renderer a[href^="/shorts"]' as const;
+
+/**
  * The tile's three-dot action menu button (⋮) selectors in priority order.
  * Structural button selectors take precedence so the actual <button> element is returned
  * rather than an outer custom element wrapper (e.g. yt-icon-button), without relying on
@@ -151,6 +178,11 @@ export const VIDEO_DURATION = [
  * Attribute name used to store processed videoId on recycled tile elements.
  */
 export const DATA_AC_VIDEO_ID = 'data-ac-video-id' as const;
+
+/**
+ * Attribute name used to store previous inline display style when hiding Shorts elements.
+ */
+export const DATA_AC_PREV_DISPLAY = 'data-ac-prev-display' as const;
 
 /**
  * Selector matching tiles that have been processed with data-ac-video-id.
@@ -241,6 +273,12 @@ export const SELECTORS = {
   shortsContainerSelector: SHORTS_CONTAINER_SELECTOR,
   shortsShelves: SHORTS_SELECTORS,
   shorts: SHORTS_SELECTOR,
+  shortsGuide: SHORTS_GUIDE_SELECTORS.join(', '),
+  shortsGuideEntry: SHORTS_GUIDE_ENTRY,
+  shortsGuideLink: SHORTS_GUIDE_LINK,
+  shortsLink: SHORTS_LINK,
+  hiddenShortsClass: HIDDEN_SHORTS_CLASS,
+  hiddenShorts: HIDDEN_SHORTS_SELECTOR,
   tileMenuButton: TILE_MENU_BUTTON,
   tileMenuButtonSelectors: TILE_MENU_BUTTON_SELECTORS,
   videoLink: VIDEO_LINK,
@@ -249,6 +287,7 @@ export const SELECTORS = {
   channelName: CHANNEL_NAME,
   duration: VIDEO_DURATION,
   videoIdAttr: DATA_AC_VIDEO_ID,
+  prevDisplayAttr: DATA_AC_PREV_DISPLAY,
   processedTile: PROCESSED_TILE_SELECTOR,
   navigateFinishEvent: YT_NAVIGATE_FINISH_EVENT,
   tileClass: AC_TILE_CLASS,

@@ -4,10 +4,176 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlgoCleanse</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div id="app">
-      <h1>AlgoCleanse</h1>
+    <div id="app" class="popup-container">
+      <header class="header">
+        <h1 class="title">AlgoCleanse</h1>
+        <p class="tagline">Cleanse your feed and your algorithm</p>
+      </header>
+
+      <section class="section strictness-section">
+        <h2 class="section-title">Strictness</h2>
+        <div
+          class="segmented-control"
+          role="radiogroup"
+          aria-label="Strictness"
+        >
+          <button
+            type="button"
+            class="segment-btn"
+            data-strictness="gentle"
+            id="strictness-gentle"
+            role="radio"
+            aria-checked="false"
+          >
+            Gentle
+          </button>
+          <button
+            type="button"
+            class="segment-btn"
+            data-strictness="balanced"
+            id="strictness-balanced"
+            role="radio"
+            aria-checked="false"
+          >
+            Balanced
+          </button>
+          <button
+            type="button"
+            class="segment-btn"
+            data-strictness="strict"
+            id="strictness-strict"
+            role="radio"
+            aria-checked="false"
+          >
+            Strict
+          </button>
+        </div>
+      </section>
+
+      <section class="section filters-section">
+        <h2 class="section-title">Filters</h2>
+        <div class="setting-row">
+          <div class="row-label">
+            <span class="label-text">Filter clickbait</span>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="toggle-filter-clickbait"
+              data-setting="enabled"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="row-label">
+            <span class="label-text">Remove Shorts</span>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="toggle-remove-shorts"
+              data-setting="hideShorts"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section tell-youtube-section">
+        <h2 class="section-title">Tell YouTube</h2>
+        <div class="setting-row">
+          <div class="row-label">
+            <span class="label-text">Auto-send “Not interested”</span>
+            <span class="subtext"
+              >Only for the filters you pick · max 40/day</span
+            >
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="toggle-auto-not-interested"
+              data-setting="autoNotInterested"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div id="categories-container" class="categories-container"></div>
+        <div id="no-categories-hint" class="hint" style="display: none">
+          Pick at least one filter
+        </div>
+
+        <div class="setting-row mt-3">
+          <div class="row-label">
+            <span class="label-text">Don’t recommend channels I block</span>
+            <span class="subtext">Only affects your own account</span>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="toggle-dont-recommend"
+              data-setting="dontRecommendOnBlock"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section help-section">
+        <h2 class="section-title">Help</h2>
+        <div class="setting-row">
+          <div class="row-label">
+            <span class="label-text">Send feedback</span>
+            <span class="subtext">Helps improve detection for everyone</span>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="toggle-feedback"
+              data-setting="feedbackConsent"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section channels-section">
+        <h2 class="section-title">Channels</h2>
+        <div class="menu-link-row">
+          <a href="#" id="blocked-channels-link" class="menu-link">
+            <span>Blocked channels (<span id="blocked-count">0</span>)</span>
+            <span class="link-arrow">›</span>
+          </a>
+        </div>
+        <div class="menu-link-row">
+          <a href="#" id="allowed-channels-link" class="menu-link">
+            <span
+              >Always-allowed channels (<span id="allowed-count">0</span>)</span
+            >
+            <span class="link-arrow">›</span>
+          </a>
+        </div>
+        <div class="menu-link-row">
+          <a
+            href="https://myactivity.google.com/product/youtube"
+            target="_blank"
+            rel="noopener noreferrer"
+            id="manage-history-link"
+            class="menu-link"
+          >
+            <span>Manage “Not interested” history</span>
+            <span class="link-arrow external-arrow">↗</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span id="patterns-revision">Patterns rev 1</span>
+      </footer>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>
