@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { storage } from 'wxt/utils/storage';
+import { initFeedbackHandler } from '../../../src/background/feedback';
 import { BUNDLED_PATTERNS } from '../../../src/core/bundled-patterns';
+import { evaluate } from '../../../src/core/engine';
 import { updateSettings } from '../../../src/core/settings';
 import { DEFAULT_SETTINGS, type Settings } from '../../../src/core/types';
 import {
@@ -70,6 +72,7 @@ describe('YouTube feedback UI and interactions', () => {
     fakeBrowser.reset();
     await storage.clear('sync');
     await storage.clear('local');
+    initFeedbackHandler();
     document.body.innerHTML = '';
     clearEventListeners();
     resetCollapseState();
@@ -233,13 +236,14 @@ describe('YouTube feedback UI and interactions', () => {
       });
 
       const parsedBody = JSON.parse(callOptions?.body as string);
+      const expectedVerdict = evaluate(video, patterns, settings);
       expect(parsedBody).toEqual({
         kind: 'false_positive',
         videoId: 'video_fp_101',
         title: 'TOP 10 SHOCKING MOMENTS (GONE WRONG)',
         channelHandle: '@top10channel',
-        matchedRuleIds: expect.arrayContaining(['gone-wrong']),
-        score: expect.any(Number),
+        matchedRuleIds: expectedVerdict.matchedRuleIds,
+        score: expectedVerdict.score,
         strictness: 'balanced',
         patternsRevision: patterns.revision,
         extensionVersion: '0.1.0',
@@ -252,6 +256,26 @@ describe('YouTube feedback UI and interactions', () => {
 
       // Second click does nothing and does not send another request
       wfBtn!.click();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      // Also test the session guard itself (not just the disabled attribute):
+      wfBtn!.disabled = false;
+      wfBtn!.click();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(wfBtn?.textContent).toBe('Thanks!');
+      expect(wfBtn?.disabled).toBe(true);
+
+      // Revealing tile again in the same session keeps the button disabled with 'Thanks!'
+      revealTile(tile, video);
+      const reRevealedWfBtn = tile.querySelector<HTMLButtonElement>(
+        SELECTORS.wronglyFilteredAction,
+      );
+      expect(reRevealedWfBtn?.textContent).toBe('Thanks!');
+      expect(reRevealedWfBtn?.disabled).toBe(true);
+      reRevealedWfBtn?.click();
+      await new Promise((r) => setTimeout(r, 20));
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
   });
@@ -336,8 +360,13 @@ describe('YouTube feedback UI and interactions', () => {
         channelHandle: '@annoying_chef',
       });
       document.body.appendChild(tile);
+      const video = extractVideo(tile)!;
 
-      // User blocks channel
+      // 1. First process tile with feedbackConsent = 'granted' so currentSettings is set in collapse.ts
+      evaluateAndProcessTile(tile, video, patterns, settings);
+      expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(false);
+
+      // 2. User blocks channel
       await handleBlockChannel('@annoying_chef', tile);
 
       // Tile is collapsed with reason "You blocked this channel"
@@ -349,18 +378,89 @@ describe('YouTube feedback UI and interactions', () => {
       // Collapsed card for a user block has NO feedback note
       expect(card?.querySelector(SELECTORS.feedbackNote)).toBeNull();
 
-      // User reveals tile (Show anyway)
-      const video = extractVideo(tile)!;
+      // 3. User reveals tile (Show anyway)
       revealTile(tile, video);
 
       // Verify uncollapsed
       expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(false);
 
-      // Verify NO Wrongly filtered? button is rendered
+      // Verify NO Wrongly filtered? button and NO Clickbait? button is rendered
       expect(tile.querySelector(SELECTORS.wronglyFilteredAction)).toBeNull();
+      expect(tile.querySelector(SELECTORS.clickbaitAction)).toBeNull();
 
-      // Verify fetch was never called
+      // Block channel button remains present on uncollapsed tile with channel handle
+      expect(tile.querySelector(SELECTORS.blockAction)).not.toBeNull();
+
+      // Wait a tick before asserting fetch was never called
+      await new Promise((r) => setTimeout(r, 20));
       expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('revealing a pattern-flagged tile shows Wrongly filtered? but no Clickbait?', async () => {
+      settings.feedbackConsent = 'granted';
+      await updateSettings({ feedbackConsent: 'granted' });
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const tile = createTestTile({
+        videoId: 'video_pattern_flagged_404',
+        title: 'UNBELIEVABLE EXPERIMENT (GONE WRONG) 😱',
+        channelHandle: '@sensational_experiments',
+      });
+      document.body.appendChild(tile);
+      const video = extractVideo(tile)!;
+      evaluateAndProcessTile(tile, video, patterns, settings);
+
+      expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+
+      // Reveal tile
+      revealTile(tile, video);
+
+      expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(false);
+      // Has Wrongly filtered? button
+      expect(
+        tile.querySelector(SELECTORS.wronglyFilteredAction),
+      ).not.toBeNull();
+      // Has NO Clickbait? button
+      expect(tile.querySelector(SELECTORS.clickbaitAction)).toBeNull();
+      // Has Block channel button
+      expect(tile.querySelector(SELECTORS.blockAction)).not.toBeNull();
+
+      await new Promise((r) => setTimeout(r, 20));
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('updates feedback note on card reuse when consent changes', async () => {
+      settings.feedbackConsent = 'unset';
+      await updateSettings({ feedbackConsent: 'unset' });
+
+      const tile = createTestTile({
+        videoId: 'video_reuse_card_01',
+        title: 'ANOTHER CRAZY VIDEO (GONE WRONG) 😱',
+        channelHandle: '@extreme',
+      });
+      document.body.appendChild(tile);
+      const video = extractVideo(tile)!;
+
+      // 1. Initial evaluation with unset: no feedback note
+      evaluateAndProcessTile(tile, video, patterns, settings);
+      const card = tile.querySelector(SELECTORS.card);
+      expect(card).not.toBeNull();
+      expect(card?.querySelector(SELECTORS.feedbackNote)).toBeNull();
+
+      // 2. Change consent to granted and re-evaluate: note added to existing card
+      settings.feedbackConsent = 'granted';
+      await updateSettings({ feedbackConsent: 'granted' });
+      evaluateAndProcessTile(tile, video, patterns, settings);
+      expect(card?.querySelector(SELECTORS.feedbackNote)).not.toBeNull();
+      expect(card?.querySelector(SELECTORS.feedbackNote)?.textContent).toBe(
+        'Your feedback helps improve detection',
+      );
+
+      // 3. Change consent to denied and re-evaluate: note removed from existing card
+      settings.feedbackConsent = 'denied';
+      await updateSettings({ feedbackConsent: 'denied' });
+      evaluateAndProcessTile(tile, video, patterns, settings);
+      expect(card?.querySelector(SELECTORS.feedbackNote)).toBeNull();
     });
   });
 });

@@ -75,20 +75,17 @@ export async function sendFeedback(payload: FeedbackPayload): Promise<void> {
         ? browser
         : (globalThis as unknown as { browser?: typeof browser }).browser;
 
-    // Send via background message if available
+    // Send via background message
     if (b?.runtime?.sendMessage) {
       try {
         await b.runtime.sendMessage({
           type: 'SEND_FEEDBACK',
           payload,
         });
-        return;
       } catch {
-        // Fall back to direct fetch if background message listener is not registered
+        // Fire-and-forget: catch all exceptions
       }
     }
-
-    await postFeedbackDirect(baseUrl, payload);
   } catch {
     // Fire-and-forget: catch all exceptions
   }

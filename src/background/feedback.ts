@@ -46,5 +46,9 @@ export function initFeedbackHandler(): void {
     typeof browser !== 'undefined'
       ? browser
       : (globalThis as unknown as { browser?: typeof browser }).browser;
-  b?.runtime?.onMessage?.addListener?.(handleFeedbackMessage);
+  b?.runtime?.onMessage?.addListener?.((message: unknown) => {
+    if (isFeedbackMessage(message)) {
+      void handleFeedbackMessage(message);
+    }
+  });
 }

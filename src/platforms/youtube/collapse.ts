@@ -86,6 +86,29 @@ export function formatChannelLine(
 }
 
 /**
+ * Updates or creates the feedback note element on a collapsed card.
+ */
+export function updateFeedbackNote(
+  card: Element,
+  verdict: Verdict,
+  settings: Settings | null | undefined,
+): void {
+  const existingNote = card.querySelector(SELECTORS.feedbackNote);
+  const shouldHaveNote =
+    settings?.feedbackConsent === 'granted' && verdict.source !== 'blocklist';
+
+  if (shouldHaveNote && !existingNote) {
+    const feedbackNoteEl = document.createElement('div');
+    feedbackNoteEl.className = 'ac-card-feedback-note';
+    feedbackNoteEl.setAttribute(SELECTORS.feedbackNoteAttr, '');
+    feedbackNoteEl.textContent = 'Your feedback helps improve detection';
+    card.appendChild(feedbackNoteEl);
+  } else if (!shouldHaveNote && existingNote) {
+    existingNote.remove();
+  }
+}
+
+/**
  * Creates the AlgoCleanse collapsed card DOM element.
  */
 export function createCard(
@@ -193,17 +216,7 @@ export function createCard(
   card.appendChild(statusEl);
 
   // Feedback note below status when feedbackConsent === 'granted'
-  const activeSettings = settings ?? currentSettings;
-  if (
-    activeSettings?.feedbackConsent === 'granted' &&
-    verdict.source !== 'blocklist'
-  ) {
-    const feedbackNoteEl = document.createElement('div');
-    feedbackNoteEl.className = 'ac-card-feedback-note';
-    feedbackNoteEl.setAttribute(SELECTORS.feedbackNoteAttr, '');
-    feedbackNoteEl.textContent = 'Your feedback helps improve detection';
-    card.appendChild(feedbackNoteEl);
-  }
+  updateFeedbackNote(card, verdict, settings ?? currentSettings);
 
   return card;
 }
@@ -252,6 +265,7 @@ export function attachBlockButton(
   tile: Element,
   video: VideoInfo,
   settings?: Settings,
+  allowClickbait: boolean = false,
 ): void {
   videoInfoMap.set(tile, video);
   const activeSettings = settings ?? currentSettings;
@@ -265,7 +279,10 @@ export function attachBlockButton(
   }
 
   const showBlock = Boolean(video.channelHandle);
-  const showClickbait = activeSettings?.feedbackConsent === 'granted';
+  const showClickbait =
+    allowClickbait &&
+    activeSettings?.feedbackConsent === 'granted' &&
+    !sessionReportedVideoIds.has(video.videoId);
 
   if (!showBlock && !showClickbait) {
     removeBlockButton(tile);
@@ -405,10 +422,15 @@ export function attachWronglyFilteredButton(
   ) as HTMLButtonElement | null;
 
   if (sentFalsePositiveSessionVideoIds.has(video.videoId)) {
-    if (wfBtn) {
-      wfBtn.textContent = 'Thanks!';
-      wfBtn.disabled = true;
+    if (!wfBtn) {
+      wfBtn = document.createElement('button');
+      wfBtn.type = 'button';
+      wfBtn.className = 'ac-btn-wrongly-filtered';
+      wfBtn.setAttribute(SELECTORS.actionAttr, 'wrongly-filtered');
+      tile.appendChild(wfBtn);
     }
+    wfBtn.textContent = 'Thanks!';
+    wfBtn.disabled = true;
     return wfBtn;
   }
 
@@ -425,6 +447,8 @@ export function attachWronglyFilteredButton(
     e.preventDefault();
     e.stopPropagation();
     if (sentFalsePositiveSessionVideoIds.has(video.videoId)) {
+      wfBtn!.textContent = 'Thanks!';
+      wfBtn!.disabled = true;
       return;
     }
     sentFalsePositiveSessionVideoIds.add(video.videoId);
@@ -487,6 +511,7 @@ export function collapseTile(
       existingChips.every((r, idx) => r === verdict.reasons[idx]);
 
     if (reasonsEqual) {
+      updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();
       return existingCard as HTMLElement;
     }
@@ -501,6 +526,7 @@ export function collapseTile(
         chip.textContent = reason;
         chipsContainer.appendChild(chip);
       }
+      updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();
       return existingCard as HTMLElement;
     }
@@ -543,9 +569,7 @@ export function revealTile(tile: Element, video: VideoInfo): void {
   markSessionRevealed(video.videoId);
   uncollapseTile(tile);
   onRevealed(tile, video);
-  if (video.channelHandle) {
-    attachBlockButton(tile, video, currentSettings ?? undefined);
-  }
+  attachBlockButton(tile, video, currentSettings ?? undefined, false);
   const verdict =
     lastVerdictMap.get(tile) || lastVerdictByVideoMap.get(video.videoId);
   if (
@@ -585,7 +609,7 @@ export async function handleAlwaysAllow(handle: string): Promise<void> {
       normalizeChannelHandle(video.channelHandle) === normHandle
     ) {
       uncollapseTile(t);
-      attachBlockButton(t, video, currentSettings ?? undefined);
+      attachBlockButton(t, video, currentSettings ?? undefined, false);
     }
   }
 
@@ -656,7 +680,7 @@ export function evaluateAndProcessTile(
         uncollapseTile(tile);
       }
       if (settings.enabled) {
-        attachBlockButton(tile, video, settings);
+        attachBlockButton(tile, video, settings, false);
       } else {
         removeBlockButton(tile);
       }
@@ -684,7 +708,7 @@ export function evaluateAndProcessTile(
       uncollapseTile(tile);
     }
     if (settings.enabled) {
-      attachBlockButton(tile, video, settings);
+      attachBlockButton(tile, video, settings, false);
     } else {
       removeBlockButton(tile);
     }
@@ -701,7 +725,7 @@ export function evaluateAndProcessTile(
   } else {
     uncollapseTile(tile);
     if (settings.enabled) {
-      attachBlockButton(tile, video, settings);
+      attachBlockButton(tile, video, settings, !verdict.flagged);
     } else {
       removeBlockButton(tile);
     }

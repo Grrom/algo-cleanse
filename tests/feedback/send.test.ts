@@ -7,6 +7,7 @@ import {
   isFeedbackMessage,
 } from '../../src/background/feedback';
 import { updateSettings } from '../../src/core/settings';
+import type { VideoInfo } from '../../src/core/types';
 import {
   getApiBaseUrl,
   getBrowserName,
@@ -15,6 +16,10 @@ import {
   sendFeedback,
   type FeedbackPayload,
 } from '../../src/feedback/send';
+import {
+  handleReportClickbait,
+  resetCollapseState,
+} from '../../src/platforms/youtube/collapse';
 
 describe('feedback sending and payload schema', () => {
   const TEST_API_BASE = 'https://api.algocleanse.test';
@@ -36,44 +41,69 @@ describe('feedback sending and payload schema', () => {
     fakeBrowser.reset();
     await storage.clear('sync');
     await storage.clear('local');
+    initFeedbackHandler();
+    resetCollapseState();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
 
   // Acceptance criterion: Payload has no URL besides videoId and no user identifier
-  it('Payload has no URL besides videoId and no user identifier', () => {
-    const keys = Object.keys(samplePayload);
+  it('Payload has no URL besides videoId and no user identifier', async () => {
+    vi.stubEnv('WXT_API_BASE_URL', TEST_API_BASE);
+    await updateSettings({ feedbackConsent: 'granted' });
+
+    let capturedPayload: FeedbackPayload | null = null;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      capturedPayload = JSON.parse(init?.body as string);
+      return new Response(null, { status: 204 });
+    });
+
+    const tile = document.createElement('div');
+    const video: VideoInfo = {
+      videoId: 'abc123vid',
+      title: 'Sensational Title (Gone Wrong)',
+      channelHandle: '@sample_channel',
+      channelName: 'Sample Channel',
+      durationText: '10:00',
+      isShort: false,
+    };
+
+    handleReportClickbait(tile, video);
+    await vi.waitFor(() => expect(capturedPayload).not.toBeNull());
+
+    const payload = capturedPayload!;
+
+    // Verify expected payload keys
     const expectedKeys = [
-      'kind',
-      'videoId',
-      'title',
+      'browser',
       'channelHandle',
+      'extensionVersion',
+      'kind',
       'matchedRuleIds',
+      'patternsRevision',
       'score',
       'strictness',
-      'patternsRevision',
-      'extensionVersion',
-      'browser',
+      'title',
+      'videoId',
     ];
-
-    expect(keys.sort()).toEqual(expectedKeys.sort());
+    expect(Object.keys(payload).sort()).toEqual(expectedKeys.sort());
 
     // Verify no user identifiers
-    expect('userId' in samplePayload).toBe(false);
-    expect('user' in samplePayload).toBe(false);
-    expect('ip' in samplePayload).toBe(false);
-    expect('email' in samplePayload).toBe(false);
-    expect('accountId' in samplePayload).toBe(false);
+    expect('userId' in payload).toBe(false);
+    expect('user' in payload).toBe(false);
+    expect('ip' in payload).toBe(false);
+    expect('email' in payload).toBe(false);
+    expect('accountId' in payload).toBe(false);
 
     // Verify videoId is a bare ID without URL prefix
-    expect(samplePayload.videoId).not.toContain('http://');
-    expect(samplePayload.videoId).not.toContain('https://');
-    expect(samplePayload.videoId).not.toContain('youtube.com');
-    expect(samplePayload.videoId).toBe('abc123vid');
+    expect(payload.videoId).not.toContain('http://');
+    expect(payload.videoId).not.toContain('https://');
+    expect(payload.videoId).not.toContain('youtube.com');
+    expect(payload.videoId).toBe('abc123vid');
 
     // Title and channelHandle do not contain URL
-    expect(samplePayload.title).not.toContain('http');
-    expect(samplePayload.channelHandle).toBe('@sample_channel');
+    expect(payload.title).not.toMatch(/^https?:\/\//);
+    expect(payload.channelHandle).toBe('@sample_channel');
   });
 
   // Acceptance criterion: Consent unset or denied: no feedback buttons in DOM and fetch never called
