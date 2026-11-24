@@ -9,12 +9,8 @@
   min-height: unset !important;
 }
 
-/* Ensure video tile containers have relative positioning for hover buttons */
-ytd-rich-item-renderer,
-yt-lockup-view-model,
-ytd-video-renderer,
-ytd-compact-video-renderer,
-ytd-grid-video-renderer {
+/* Tile marker for positioning and hover state */
+.ac-tile {
   position: relative;
 }
 
@@ -183,12 +179,6 @@ ytd-grid-video-renderer {
   backdrop-filter: blur(4px);
 }
 
-:hover > [data-ac-action='block'],
-:hover [data-ac-action='block'] {
+.ac-tile:not(.ac-collapsed):hover > [data-ac-action='block'] {
   display: inline-flex;
-}
-
-.ac-collapsed [data-ac-action='block'],
-.ac-collapsed > [data-ac-action='block'] {
-  display: none !important;
 }

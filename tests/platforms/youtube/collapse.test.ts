@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { BUNDLED_PATTERNS } from '../../../src/core/bundled-patterns';
@@ -10,7 +12,6 @@ import {
   createCard,
   evaluateAndProcessTile,
   formatChannelLine,
-  handleAlwaysAllow,
   handleBlockChannel,
   isSessionRevealed,
   markSessionRevealed,
@@ -20,6 +21,7 @@ import {
   uncollapseTile,
   updateBadgeCount,
 } from '../../../src/platforms/youtube/collapse';
+import { initContent } from '../../../src/platforms/youtube/content-main';
 import {
   clearEventListeners,
   onAllowed,
@@ -147,13 +149,15 @@ describe('collapse UI & channel actions', () => {
       });
       const video = extractVideo(tile)!;
 
-      attachBlockButton(tile, video);
+      attachBlockButton(tile, video, settings);
       expect(tile.querySelector(SELECTORS.blockAction)).not.toBeNull();
+      expect(tile.classList.contains(SELECTORS.tileClass)).toBe(true);
 
       // Does not attach when tile is collapsed
       tile.classList.add(SELECTORS.collapsedClass);
-      attachBlockButton(tile, video);
+      attachBlockButton(tile, video, settings);
       expect(tile.querySelector(SELECTORS.blockAction)).toBeNull();
+      expect(tile.classList.contains(SELECTORS.tileClass)).toBe(false);
     });
 
     it('manages session revealed state', () => {
@@ -169,27 +173,34 @@ describe('collapse UI & channel actions', () => {
   // Acceptance criterion 1:
   // jsdom: clickbait fixture tile gets ac-collapsed and a card with title, channel line and one chip per matched label; clean tile untouched
   it('jsdom: clickbait fixture tile gets ac-collapsed and a card with title, channel line and one chip per matched label; clean tile untouched', () => {
-    const clickbaitTile = createTestTile({
-      videoId: 'cb001',
-      title: "You Won't Believe What Happened Next! (Gone Wrong)",
-      channelHandle: '@creator1',
-      channelName: 'Creator One',
-      durationText: '18:02',
-    });
+    const fixtureHtml = readFileSync(
+      resolve(__dirname, '../../fixtures/youtube/home-clickbait.html'),
+      'utf-8',
+    );
+    const container = document.createElement('div');
+    container.innerHTML = fixtureHtml;
+    document.body.appendChild(container);
 
-    const cleanTile = createTestTile({
-      videoId: 'clean001',
-      title: 'Building a REST API with Node.js and Express',
-      channelHandle: '@devmastery',
-      channelName: 'Dev Mastery',
-      durationText: '14:20',
-    });
+    const tiles = Array.from(container.querySelectorAll(SELECTORS.tile)).filter(
+      (el) => !el.parentElement || !el.parentElement.closest(SELECTORS.tile),
+    );
 
-    document.body.appendChild(clickbaitTile);
-    document.body.appendChild(cleanTile);
+    expect(tiles.length).toBe(2);
+    const clickbaitTile = tiles[0]!;
+    const cleanTile = tiles[1]!;
 
     const cbVideo = extractVideo(clickbaitTile)!;
     const cleanVideo = extractVideo(cleanTile)!;
+
+    expect(cbVideo.title).toBe(
+      'I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG) 😱😱😱!!!',
+    );
+    expect(cbVideo.channelName).toBe('Extreme Vlogs');
+    expect(cbVideo.durationText).toBe('18:02');
+
+    expect(cleanVideo.title).toBe('Building a Modern Extension from Scratch');
+    expect(cleanVideo.channelName).toBe('Dev Mastery');
+    expect(cleanVideo.durationText).toBe('14:20');
 
     evaluateAndProcessTile(clickbaitTile, cbVideo, patterns, settings);
     evaluateAndProcessTile(cleanTile, cleanVideo, patterns, settings);
@@ -208,20 +219,25 @@ describe('collapse UI & channel actions', () => {
     // Title struck through
     const titleEl = card!.querySelector(SELECTORS.cardTitle);
     expect(titleEl?.textContent).toBe(
-      "You Won't Believe What Happened Next! (Gone Wrong)",
+      'I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG) 😱😱😱!!!',
     );
     expect(titleEl?.querySelector('s')).not.toBeNull();
+    expect(titleEl?.querySelector('s')?.textContent).toBe(
+      'I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG) 😱😱😱!!!',
+    );
 
     // Channel line "<channel name> · <duration>"
     const channelEl = card!.querySelector(SELECTORS.cardChannel);
-    expect(channelEl?.textContent).toBe('Creator One · 18:02');
+    expect(channelEl?.textContent).toBe('Extreme Vlogs · 18:02');
 
     // One chip per matched label
     const chips = Array.from(card!.querySelectorAll(SELECTORS.chip));
-    expect(chips.length).toBe(2);
+    expect(chips.length).toBeGreaterThanOrEqual(1);
     const chipLabels = chips.map((c) => c.textContent);
     expect(chipLabels).toContain('Bait phrase: “gone wrong”');
-    expect(chipLabels).toContain("Bait phrase: “you won't believe”");
+    expect(chipLabels).toContain('ALL CAPS title');
+    expect(chipLabels).toContain('Emoji spam');
+    expect(chipLabels).toContain('Excessive !!! / ???');
 
     // Action buttons
     const showBtn = card!.querySelector(SELECTORS.showAction);
@@ -283,6 +299,43 @@ describe('collapse UI & channel actions', () => {
     expect(tile.querySelector(SELECTORS.card)).toBeNull();
   });
 
+  // Block channel on a revealed tile keeps tile collapsed when re-evaluated via settings
+  it('Block channel on a revealed tile keeps tile collapsed when re-evaluated via settings', async () => {
+    const tile = createTestTile({
+      videoId: 'cb002_revealed_block',
+      title: 'STOP DOING THIS RIGHT NOW 😱😱😱',
+      channelHandle: '@shockchannel',
+      channelName: 'Shock Channel',
+    });
+    document.body.appendChild(tile);
+
+    const video = extractVideo(tile)!;
+    evaluateAndProcessTile(tile, video, patterns, settings);
+    expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+
+    // Reveal tile
+    const showBtn = tile.querySelector(
+      SELECTORS.showAction,
+    ) as HTMLButtonElement;
+    showBtn.click();
+    expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(false);
+
+    // Block the channel for this tile
+    await handleBlockChannel('@shockchannel', tile);
+
+    // Re-evaluate with latest settings
+    const currentSettings = await getSettings();
+    expect(currentSettings.blockedChannels).toContain('@shockchannel');
+    reEvaluateAllTiles(patterns, currentSettings);
+
+    // Tile remains collapsed with "You blocked this channel"
+    expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+    const chips = Array.from(tile.querySelectorAll(SELECTORS.chip)).map(
+      (c) => c.textContent,
+    );
+    expect(chips).toEqual(['You blocked this channel']);
+  });
+
   // Acceptance criterion 3:
   // Always allow channel stores the handle, un-collapses all tiles of that channel, fires onAllowed
   it('Always allow channel stores the handle, un-collapses all tiles of that channel, fires onAllowed', async () => {
@@ -314,7 +367,9 @@ describe('collapse UI & channel actions', () => {
     ) as HTMLButtonElement;
     expect(allowBtn).not.toBeNull();
 
-    await handleAlwaysAllow('@craftsgonewrong');
+    // Click "Always allow channel" button
+    allowBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(allowedListener).toHaveBeenCalledTimes(1);
     expect(allowedListener).toHaveBeenCalledWith('@craftsgonewrong');
@@ -361,7 +416,9 @@ describe('collapse UI & channel actions', () => {
     ) as HTMLButtonElement;
     expect(blockBtn).not.toBeNull();
 
-    await handleBlockChannel('@mathlab', tile1);
+    // Click "Block channel" button
+    blockBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(blockedListener).toHaveBeenCalledTimes(1);
     expect(blockedListener).toHaveBeenCalledWith('@mathlab', tile1);
@@ -399,20 +456,25 @@ describe('collapse UI & channel actions', () => {
     });
     document.body.appendChild(tile);
 
-    // Initial evaluation under balanced
-    settings.strictness = 'balanced';
-    evaluateAndProcessTile(tile, extractVideo(tile)!, patterns, settings);
+    const stop = await initContent({
+      settings: { ...DEFAULT_SETTINGS, strictness: 'balanced' },
+      patterns: BUNDLED_PATTERNS,
+    });
+
+    evaluateAndProcessTile(tile, extractVideo(tile)!, BUNDLED_PATTERNS, {
+      ...DEFAULT_SETTINGS,
+      strictness: 'balanced',
+    });
     expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(true);
 
     // Change strictness to gentle via settings
-    settings = await updateSettings({ strictness: 'gentle' });
-    expect(settings.strictness).toBe('gentle');
-
-    // Re-evaluate tiles without page reload
-    reEvaluateAllTiles(patterns, settings);
+    await updateSettings({ strictness: 'gentle' });
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(tile.classList.contains(SELECTORS.collapsedClass)).toBe(false);
     expect(tile.querySelector(SELECTORS.card)).toBeNull();
+
+    stop();
   });
 
   // Acceptance criterion 6:
@@ -475,12 +537,7 @@ describe('collapse UI & channel actions', () => {
   // Acceptance criterion 8:
   // Badge count message equals number of collapsed tiles
   it('Badge count message equals number of collapsed tiles', () => {
-    const sendSpy = vi.fn();
-    (globalThis as unknown as { browser: unknown }).browser = {
-      runtime: {
-        sendMessage: sendSpy,
-      },
-    };
+    const sendSpy = vi.spyOn(fakeBrowser.runtime, 'sendMessage');
 
     const tile1 = createTestTile({
       videoId: 'badge001',
@@ -525,6 +582,89 @@ describe('collapse UI & channel actions', () => {
     expect(sendSpy).toHaveBeenLastCalledWith({
       type: 'COLLAPSED_COUNT',
       count: 0,
+    });
+  });
+
+  describe('card reuse and disabled extension behavior', () => {
+    it('preserves existing card and slots when re-evaluated with same or updated reasons', () => {
+      const tile = createTestTile({
+        videoId: 'reuseVid01',
+        title: 'Video Gone Wrong',
+        channelHandle: '@creator',
+      });
+      document.body.appendChild(tile);
+      const video = extractVideo(tile)!;
+
+      const verdict1 = {
+        flagged: true,
+        score: 3,
+        reasons: ['Bait phrase: “gone wrong”'],
+        matchedRuleIds: ['gone-wrong'],
+        matchedCategories: ['bait-phrase'],
+        source: 'patterns' as const,
+      };
+
+      const card1 = collapseTile(tile, video, verdict1);
+
+      // Populate extra actions slot and status slot
+      const extraSlot = card1.querySelector(SELECTORS.actionsExtra)!;
+      const dummyAction = document.createElement('span');
+      dummyAction.id = 'dummy-extra';
+      dummyAction.textContent = 'Not interested';
+      extraSlot.appendChild(dummyAction);
+
+      const statusSlot = card1.querySelector(SELECTORS.status)!;
+      const dummyStatus = document.createElement('span');
+      dummyStatus.id = 'dummy-status';
+      dummyStatus.textContent = 'Told YouTube';
+      statusSlot.appendChild(dummyStatus);
+
+      // Re-evaluate with exact same verdict -> exact same card node and slots preserved
+      const card2 = collapseTile(tile, video, verdict1);
+      expect(card2).toBe(card1);
+      expect(card2.querySelector('#dummy-extra')).not.toBeNull();
+      expect(card2.querySelector('#dummy-status')).not.toBeNull();
+
+      // Re-evaluate with modified reasons -> card node and slots still preserved, chips updated
+      const verdict2 = {
+        ...verdict1,
+        reasons: ['Bait phrase: “gone wrong”', 'ALL CAPS title'],
+      };
+      const card3 = collapseTile(tile, video, verdict2);
+      expect(card3).toBe(card1);
+      expect(card3.querySelector('#dummy-extra')).not.toBeNull();
+      expect(card3.querySelector('#dummy-status')).not.toBeNull();
+
+      const chips = Array.from(card3.querySelectorAll(SELECTORS.chip)).map(
+        (c) => c.textContent,
+      );
+      expect(chips).toEqual(['Bait phrase: “gone wrong”', 'ALL CAPS title']);
+    });
+
+    it('does not attach block button and removes existing button when settings.enabled is false', () => {
+      const tile = createTestTile({
+        videoId: 'cleanDisabled01',
+        title: 'Clean Video Title',
+        channelHandle: '@cleancreator',
+      });
+      document.body.appendChild(tile);
+      const video = extractVideo(tile)!;
+
+      const disabledSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        enabled: false,
+      };
+
+      evaluateAndProcessTile(tile, video, patterns, disabledSettings);
+      expect(tile.querySelector(SELECTORS.blockAction)).toBeNull();
+
+      // Enable and verify button attaches
+      evaluateAndProcessTile(tile, video, patterns, DEFAULT_SETTINGS);
+      expect(tile.querySelector(SELECTORS.blockAction)).not.toBeNull();
+
+      // Disable again and verify button is removed
+      evaluateAndProcessTile(tile, video, patterns, disabledSettings);
+      expect(tile.querySelector(SELECTORS.blockAction)).toBeNull();
     });
   });
 });

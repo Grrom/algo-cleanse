@@ -163,6 +163,12 @@ export const PROCESSED_TILE_SELECTOR = `[${DATA_AC_VIDEO_ID}]` as const;
 export const YT_NAVIGATE_FINISH_EVENT = 'yt-navigate-finish' as const;
 
 /**
+ * Marker class added to video tiles for positioning and styling.
+ */
+export const AC_TILE_CLASS = 'ac-tile' as const;
+export const AC_TILE_SELECTOR = '.ac-tile' as const;
+
+/**
  * CSS class added to collapsed video tiles.
  */
 export const AC_COLLAPSED_CLASS = 'ac-collapsed' as const;
@@ -245,6 +251,8 @@ export const SELECTORS = {
   videoIdAttr: DATA_AC_VIDEO_ID,
   processedTile: PROCESSED_TILE_SELECTOR,
   navigateFinishEvent: YT_NAVIGATE_FINISH_EVENT,
+  tileClass: AC_TILE_CLASS,
+  tileMarker: AC_TILE_SELECTOR,
   collapsedClass: AC_COLLAPSED_CLASS,
   collapsedSelector: AC_COLLAPSED_SELECTOR,
   cardAttr: AC_CARD_ATTR,

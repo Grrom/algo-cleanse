@@ -13,6 +13,7 @@ import { SELECTORS } from './selectors';
 const sessionRevealedVideoIds = new Set<string>();
 const collapsedTileVideoMap = new WeakMap<Element, string>();
 const videoInfoMap = new WeakMap<Element, VideoInfo>();
+let lastBadgeCount: number | null = null;
 
 /**
  * Checks if a videoId has been revealed via Show anyway during this page session.
@@ -177,6 +178,10 @@ export function getCollapsedCount(): number {
  */
 export function updateBadgeCount(): number {
   const count = getCollapsedCount();
+  if (count === lastBadgeCount) {
+    return count;
+  }
+  lastBadgeCount = count;
   try {
     const b =
       typeof browser !== 'undefined'
@@ -199,15 +204,22 @@ export function updateBadgeCount(): number {
 /**
  * Attaches the "Block channel" button on hover for a clean tile with a known handle.
  */
-export function attachBlockButton(tile: Element, video: VideoInfo): void {
+export function attachBlockButton(
+  tile: Element,
+  video: VideoInfo,
+  settings?: Settings,
+): void {
   videoInfoMap.set(tile, video);
   if (
+    settings?.enabled === false ||
     tile.classList.contains(SELECTORS.collapsedClass) ||
     !video.channelHandle
   ) {
     removeBlockButton(tile);
     return;
   }
+
+  tile.classList.add(SELECTORS.tileClass);
 
   let blockBtn = tile.querySelector(
     SELECTORS.blockAction,
@@ -234,6 +246,7 @@ export function attachBlockButton(tile: Element, video: VideoInfo): void {
  * Removes the "Block channel" button from a tile.
  */
 export function removeBlockButton(tile: Element): void {
+  tile.classList.remove(SELECTORS.tileClass);
   const blockBtn = tile.querySelector(SELECTORS.blockAction);
   if (blockBtn) {
     blockBtn.remove();
@@ -254,6 +267,36 @@ export function collapseTile(
   removeBlockButton(tile);
 
   const existingCard = tile.querySelector(SELECTORS.card);
+  const prevVideoId = collapsedTileVideoMap.get(tile);
+
+  if (existingCard && prevVideoId === video.videoId) {
+    const existingChips = Array.from(
+      existingCard.querySelectorAll(SELECTORS.chip),
+    ).map((c) => c.textContent ?? '');
+    const reasonsEqual =
+      existingChips.length === verdict.reasons.length &&
+      existingChips.every((r, idx) => r === verdict.reasons[idx]);
+
+    if (reasonsEqual) {
+      updateBadgeCount();
+      return existingCard as HTMLElement;
+    }
+
+    const chipsContainer = existingCard.querySelector(SELECTORS.chips);
+    if (chipsContainer) {
+      chipsContainer.innerHTML = '';
+      for (const reason of verdict.reasons) {
+        const chip = document.createElement('span');
+        chip.className = 'ac-chip';
+        chip.setAttribute(SELECTORS.chipAttr, '');
+        chip.textContent = reason;
+        chipsContainer.appendChild(chip);
+      }
+      updateBadgeCount();
+      return existingCard as HTMLElement;
+    }
+  }
+
   if (existingCard) {
     existingCard.remove();
   }
@@ -261,7 +304,6 @@ export function collapseTile(
   const card = createCard(tile, video, verdict);
   tile.appendChild(card);
 
-  const prevVideoId = collapsedTileVideoMap.get(tile);
   if (prevVideoId !== video.videoId) {
     collapsedTileVideoMap.set(tile, video.videoId);
     onCollapsed(tile, video, verdict);
@@ -382,25 +424,29 @@ export function evaluateAndProcessTile(
     return;
   }
 
-  if (sessionRevealedVideoIds.has(video.videoId)) {
+  const verdict = evaluate(video, patterns, settings);
+
+  if (
+    sessionRevealedVideoIds.has(video.videoId) &&
+    verdict.source === 'patterns'
+  ) {
     if (tile.classList.contains(SELECTORS.collapsedClass)) {
       uncollapseTile(tile);
     }
-    if (video.channelHandle) {
-      attachBlockButton(tile, video);
+    if (video.channelHandle && settings.enabled) {
+      attachBlockButton(tile, video, settings);
     } else {
       removeBlockButton(tile);
     }
     return;
   }
 
-  const verdict = evaluate(video, patterns, settings);
   if (verdict.flagged) {
     collapseTile(tile, video, verdict);
   } else {
     uncollapseTile(tile);
-    if (video.channelHandle) {
-      attachBlockButton(tile, video);
+    if (video.channelHandle && settings.enabled) {
+      attachBlockButton(tile, video, settings);
     } else {
       removeBlockButton(tile);
     }
@@ -435,4 +481,5 @@ export function reEvaluateAllTiles(
  */
 export function resetCollapseState(): void {
   clearSessionRevealed();
+  lastBadgeCount = null;
 }
