@@ -228,9 +228,7 @@ export function doPopupItemsMatchTile(
     const itemEl = popupItems[i]!;
     const anyItem = itemEl as unknown as Record<string, unknown>;
     const popupItemData = (anyItem.data ?? anyItem.__data) as
-      | MenuItemData
-      | Record<string, unknown>
-      | undefined;
+      MenuItemData | Record<string, unknown> | undefined;
     const tileItemData = tileMenuItems[i]!;
 
     if (!popupItemData) {
@@ -253,13 +251,11 @@ export function doPopupItemsMatchTile(
     // Where both sides carry a serviceEndpoint.feedbackEndpoint.feedbackToken, compare tokens
     const popupToken = (
       unwrappedPopup?.serviceEndpoint as
-        | { feedbackEndpoint?: { feedbackToken?: string } }
-        | undefined
+        { feedbackEndpoint?: { feedbackToken?: string } } | undefined
     )?.feedbackEndpoint?.feedbackToken;
     const tileToken = (
       unwrappedTile?.serviceEndpoint as
-        | { feedbackEndpoint?: { feedbackToken?: string } }
-        | undefined
+        { feedbackEndpoint?: { feedbackToken?: string } } | undefined
     )?.feedbackEndpoint?.feedbackToken;
 
     if (popupToken && tileToken) {
@@ -273,9 +269,8 @@ export function doPopupItemsMatchTile(
     const popupIcon = (
       unwrappedPopup?.icon as { iconType?: string } | undefined
     )?.iconType;
-    const tileIcon = (
-      unwrappedTile?.icon as { iconType?: string } | undefined
-    )?.iconType;
+    const tileIcon = (unwrappedTile?.icon as { iconType?: string } | undefined)
+      ?.iconType;
 
     if (popupIcon && tileIcon && popupIcon === tileIcon) {
       continue;
@@ -314,7 +309,7 @@ export function tagMenuElements(root: Document | Element = document): void {
 }
 
 export function resolveMenuForTile(resolveId: string): void {
-  const tile = document.querySelector(SELECTORS.resolvedPopup(resolveId));
+  const tile = document.querySelector(SELECTORS.resolveTarget(resolveId));
   const tileMenuItems = tile ? findMenuDataFromElement(tile) : null;
 
   const dispatchResult = (status: 'ok' | 'timeout') => {
@@ -392,7 +387,7 @@ export default defineContentScript({
         typeof customEvent.detail === 'string'
           ? customEvent.detail
           : document
-              .querySelector(`[${SELECTORS.resolveIdAttr}]`)
+              .querySelector(SELECTORS.resolveIdSelector)
               ?.getAttribute(SELECTORS.resolveIdAttr);
       if (resolveId) {
         resolveMenuForTile(resolveId);

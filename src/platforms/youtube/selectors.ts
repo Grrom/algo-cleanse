@@ -355,8 +355,13 @@ export const AC_CHANNEL_SELECTOR = `[${AC_CHANNEL_ATTR}]` as const;
 export const DATA_AC_RESOLVE_ID = 'data-ac-resolve-id' as const;
 export const DATA_AC_ITEM_TYPE = 'data-ac-item-type' as const;
 
+export const RESOLVE_ID_SELECTOR = `[${DATA_AC_RESOLVE_ID}]` as const;
+
 export const RESOLVED_TARGET_SELECTOR = (resolveId: string) =>
   `[${DATA_AC_RESOLVE_ID}="${resolveId}"]` as const;
+
+export const RESOLVED_POPUP_SELECTOR = (resolveId: string) =>
+  `ytd-menu-popup-renderer[${DATA_AC_RESOLVE_ID}="${resolveId}"], tp-yt-iron-dropdown[${DATA_AC_RESOLVE_ID}="${resolveId}"], ytd-popup-container [${DATA_AC_RESOLVE_ID}="${resolveId}"], [${DATA_AC_RESOLVE_ID}="${resolveId}"]:not([data-ac-video-id]):not(.${AC_TILE_CLASS})` as const;
 
 /**
  * Custom event names for isolated <-> MAIN world communication.
@@ -400,7 +405,8 @@ export const SELECTORS = {
   menuBackdrop: MENU_BACKDROP,
   menuItemIcon: MENU_ITEM_ICON,
   resolveIdAttr: DATA_AC_RESOLVE_ID,
-  resolvedPopup: RESOLVED_TARGET_SELECTOR,
+  resolveIdSelector: RESOLVE_ID_SELECTOR,
+  resolvedPopup: RESOLVED_POPUP_SELECTOR,
   resolveTarget: RESOLVED_TARGET_SELECTOR,
   itemTypeAttr: DATA_AC_ITEM_TYPE,
   resolveMenuEvent: AC_RESOLVE_MENU_EVENT,

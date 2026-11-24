@@ -79,7 +79,9 @@ describe('entrypoints/youtube-main.content', () => {
       },
     };
 
-    expect(unwrapMenuItemData(navItem)).toEqual(navItem.menuNavigationItemRenderer);
+    expect(unwrapMenuItemData(navItem)).toEqual(
+      navItem.menuNavigationItemRenderer,
+    );
     expect(unwrapMenuItemData(downloadItem)).toEqual(
       downloadItem.menuServiceItemDownloadRenderer,
     );

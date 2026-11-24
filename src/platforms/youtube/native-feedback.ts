@@ -153,6 +153,7 @@ async function sendFeedbackAction(
 
     // 4. Await response from MAIN world script
     const resolved = await resolvedPromise;
+    tile.removeAttribute(SELECTORS.resolveIdAttr);
     if (resolved !== 'ok') {
       closeLeftoverPopups();
       return 'unavailable';
