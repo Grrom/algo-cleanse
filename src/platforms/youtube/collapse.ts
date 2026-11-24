@@ -6,14 +6,44 @@ import {
   normalizeChannelHandle,
 } from '../../core/settings';
 import type { Settings, VideoInfo } from '../../core/types';
+import {
+  getExtensionVersion,
+  getBrowserName,
+  sendFeedback,
+  type FeedbackPayload,
+} from '../../feedback/send';
 import { extractVideo } from './extract';
 import { onAllowed, onBlocked, onCollapsed, onRevealed } from './events';
 import { SELECTORS } from './selectors';
 
 const sessionRevealedVideoIds = new Set<string>();
+const sessionReportedVideoIds = new Set<string>();
+const sentFalsePositiveSessionVideoIds = new Set<string>();
 const collapsedTileVideoMap = new WeakMap<Element, string>();
 const videoInfoMap = new WeakMap<Element, VideoInfo>();
+const lastVerdictMap = new WeakMap<Element, Verdict>();
+const lastVerdictByVideoMap = new Map<string, Verdict>();
+let currentSettings: Settings | null = null;
+let currentPatterns: Patterns | null = null;
 let lastBadgeCount: number | null = null;
+
+// Register onRevealed listener to attach Wrongly filtered? if eligible
+onRevealed((tile, video) => {
+  const verdict =
+    lastVerdictMap.get(tile) || lastVerdictByVideoMap.get(video.videoId);
+  if (
+    verdict &&
+    verdict.source === 'patterns' &&
+    currentSettings?.feedbackConsent === 'granted'
+  ) {
+    attachWronglyFilteredButton(
+      tile,
+      video,
+      verdict,
+      currentSettings ?? undefined,
+    );
+  }
+});
 
 /**
  * Checks if a videoId has been revealed via Show anyway during this page session.
@@ -56,12 +86,36 @@ export function formatChannelLine(
 }
 
 /**
+ * Updates or creates the feedback note element on a collapsed card.
+ */
+export function updateFeedbackNote(
+  card: Element,
+  verdict: Verdict,
+  settings: Settings | null | undefined,
+): void {
+  const existingNote = card.querySelector(SELECTORS.feedbackNote);
+  const shouldHaveNote =
+    settings?.feedbackConsent === 'granted' && verdict.source !== 'blocklist';
+
+  if (shouldHaveNote && !existingNote) {
+    const feedbackNoteEl = document.createElement('div');
+    feedbackNoteEl.className = 'ac-card-feedback-note';
+    feedbackNoteEl.setAttribute(SELECTORS.feedbackNoteAttr, '');
+    feedbackNoteEl.textContent = 'Your feedback helps improve detection';
+    card.appendChild(feedbackNoteEl);
+  } else if (!shouldHaveNote && existingNote) {
+    existingNote.remove();
+  }
+}
+
+/**
  * Creates the AlgoCleanse collapsed card DOM element.
  */
 export function createCard(
   tile: Element,
   video: VideoInfo,
   verdict: Verdict,
+  settings?: Settings,
 ): HTMLElement {
   const card = document.createElement('div');
   card.setAttribute(SELECTORS.cardAttr, '');
@@ -161,6 +215,9 @@ export function createCard(
   statusEl.setAttribute(SELECTORS.statusAttr, '');
   card.appendChild(statusEl);
 
+  // Feedback note below status when feedbackConsent === 'granted'
+  updateFeedbackNote(card, verdict, settings ?? currentSettings);
+
   return card;
 }
 
@@ -202,54 +259,226 @@ export function updateBadgeCount(): number {
 }
 
 /**
- * Attaches the "Block channel" button on hover for a clean tile with a known handle.
+ * Attaches the "Block channel" and/or "Clickbait?" buttons on hover for a clean tile.
  */
 export function attachBlockButton(
   tile: Element,
   video: VideoInfo,
   settings?: Settings,
+  allowClickbait: boolean = false,
 ): void {
   videoInfoMap.set(tile, video);
+  const activeSettings = settings ?? currentSettings;
+
   if (
-    settings?.enabled === false ||
-    tile.classList.contains(SELECTORS.collapsedClass) ||
-    !video.channelHandle
+    activeSettings?.enabled === false ||
+    tile.classList.contains(SELECTORS.collapsedClass)
   ) {
+    removeBlockButton(tile);
+    return;
+  }
+
+  const showBlock = Boolean(video.channelHandle);
+  const showClickbait =
+    allowClickbait &&
+    activeSettings?.feedbackConsent === 'granted' &&
+    !sessionReportedVideoIds.has(video.videoId);
+
+  if (!showBlock && !showClickbait) {
     removeBlockButton(tile);
     return;
   }
 
   tile.classList.add(SELECTORS.tileClass);
 
-  let blockBtn = tile.querySelector(
-    SELECTORS.blockAction,
-  ) as HTMLButtonElement | null;
-  if (!blockBtn) {
-    blockBtn = document.createElement('button');
-    blockBtn.type = 'button';
-    blockBtn.className = 'ac-btn-block';
-    blockBtn.setAttribute(SELECTORS.actionAttr, 'block');
-    blockBtn.textContent = 'Block channel';
-    tile.appendChild(blockBtn);
+  let hoverContainer = tile.querySelector(
+    SELECTORS.hoverActions,
+  ) as HTMLElement | null;
+
+  if (!hoverContainer) {
+    hoverContainer = document.createElement('div');
+    hoverContainer.className = 'ac-tile-hover-actions';
+    hoverContainer.setAttribute(SELECTORS.hoverActionsAttr, '');
+    tile.appendChild(hoverContainer);
   }
 
-  blockBtn.onclick = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (video.channelHandle) {
-      await handleBlockChannel(video.channelHandle, tile);
+  // Block channel button
+  let blockBtn = hoverContainer.querySelector(
+    SELECTORS.blockAction,
+  ) as HTMLButtonElement | null;
+  if (showBlock) {
+    if (!blockBtn) {
+      blockBtn = document.createElement('button');
+      blockBtn.type = 'button';
+      blockBtn.className = 'ac-btn-block';
+      blockBtn.setAttribute(SELECTORS.actionAttr, 'block');
+      blockBtn.textContent = 'Block channel';
+      hoverContainer.appendChild(blockBtn);
     }
-  };
+    blockBtn.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.channelHandle) {
+        await handleBlockChannel(video.channelHandle, tile);
+      }
+    };
+  } else if (blockBtn) {
+    blockBtn.remove();
+  }
+
+  // Clickbait? button
+  let clickbaitBtn = hoverContainer.querySelector(
+    SELECTORS.clickbaitAction,
+  ) as HTMLButtonElement | null;
+  if (showClickbait) {
+    if (!clickbaitBtn) {
+      clickbaitBtn = document.createElement('button');
+      clickbaitBtn.type = 'button';
+      clickbaitBtn.className = 'ac-btn-clickbait';
+      clickbaitBtn.setAttribute(SELECTORS.actionAttr, 'clickbait');
+      clickbaitBtn.textContent = 'Clickbait?';
+      hoverContainer.appendChild(clickbaitBtn);
+    }
+    clickbaitBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleReportClickbait(tile, video);
+    };
+  } else if (clickbaitBtn) {
+    clickbaitBtn.remove();
+  }
 }
 
 /**
- * Removes the "Block channel" button from a tile.
+ * Handles reporting a non-flagged video as clickbait:
+ * sends feedback with kind: 'missed' and collapses tile with reason "Reported by you" for the session.
+ */
+export function handleReportClickbait(tile: Element, video: VideoInfo): void {
+  const payload: FeedbackPayload = {
+    kind: 'missed',
+    videoId: video.videoId,
+    title: video.title ?? '',
+    channelHandle: video.channelHandle ?? null,
+    matchedRuleIds: [],
+    score: 0,
+    strictness: currentSettings?.strictness ?? 'balanced',
+    patternsRevision: currentPatterns?.revision ?? 1,
+    extensionVersion: getExtensionVersion(),
+    browser: getBrowserName(),
+  };
+  void sendFeedback(payload);
+
+  sessionReportedVideoIds.add(video.videoId);
+  const reportedVerdict: Verdict = {
+    flagged: true,
+    score: 0,
+    reasons: ['Reported by you'],
+    matchedRuleIds: [],
+    matchedCategories: [],
+    source: 'user_reported',
+  };
+  collapseTile(tile, video, reportedVerdict, currentSettings ?? undefined);
+}
+
+/**
+ * Removes the hover buttons container and buttons from a tile.
  */
 export function removeBlockButton(tile: Element): void {
   tile.classList.remove(SELECTORS.tileClass);
+  const hoverContainer = tile.querySelector(SELECTORS.hoverActions);
+  if (hoverContainer) {
+    hoverContainer.remove();
+  }
   const blockBtn = tile.querySelector(SELECTORS.blockAction);
   if (blockBtn) {
     blockBtn.remove();
+  }
+  const clickbaitBtn = tile.querySelector(SELECTORS.clickbaitAction);
+  if (clickbaitBtn) {
+    clickbaitBtn.remove();
+  }
+}
+
+/**
+ * Attaches the "Wrongly filtered?" button to a revealed tile if eligible.
+ */
+export function attachWronglyFilteredButton(
+  tile: Element,
+  video: VideoInfo,
+  verdict: Verdict,
+  settings?: Settings,
+): HTMLElement | null {
+  const activeSettings = settings ?? currentSettings;
+  if (
+    activeSettings?.feedbackConsent !== 'granted' ||
+    verdict.source === 'blocklist'
+  ) {
+    removeWronglyFilteredButton(tile);
+    return null;
+  }
+
+  let wfBtn = tile.querySelector(
+    SELECTORS.wronglyFilteredAction,
+  ) as HTMLButtonElement | null;
+
+  if (sentFalsePositiveSessionVideoIds.has(video.videoId)) {
+    if (!wfBtn) {
+      wfBtn = document.createElement('button');
+      wfBtn.type = 'button';
+      wfBtn.className = 'ac-btn-wrongly-filtered';
+      wfBtn.setAttribute(SELECTORS.actionAttr, 'wrongly-filtered');
+      tile.appendChild(wfBtn);
+    }
+    wfBtn.textContent = 'Thanks!';
+    wfBtn.disabled = true;
+    return wfBtn;
+  }
+
+  if (!wfBtn) {
+    wfBtn = document.createElement('button');
+    wfBtn.type = 'button';
+    wfBtn.className = 'ac-btn-wrongly-filtered';
+    wfBtn.setAttribute(SELECTORS.actionAttr, 'wrongly-filtered');
+    wfBtn.textContent = 'Wrongly filtered?';
+    tile.appendChild(wfBtn);
+  }
+
+  wfBtn.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (sentFalsePositiveSessionVideoIds.has(video.videoId)) {
+      wfBtn!.textContent = 'Thanks!';
+      wfBtn!.disabled = true;
+      return;
+    }
+    sentFalsePositiveSessionVideoIds.add(video.videoId);
+    const payload: FeedbackPayload = {
+      kind: 'false_positive',
+      videoId: video.videoId,
+      title: video.title ?? '',
+      channelHandle: video.channelHandle ?? null,
+      matchedRuleIds: verdict.matchedRuleIds,
+      score: verdict.score,
+      strictness: activeSettings?.strictness ?? 'balanced',
+      patternsRevision: currentPatterns?.revision ?? 1,
+      extensionVersion: getExtensionVersion(),
+      browser: getBrowserName(),
+    };
+    void sendFeedback(payload);
+    wfBtn!.textContent = 'Thanks!';
+    wfBtn!.disabled = true;
+  };
+
+  return wfBtn;
+}
+
+/**
+ * Removes the "Wrongly filtered?" button from a tile.
+ */
+export function removeWronglyFilteredButton(tile: Element): void {
+  const wfBtn = tile.querySelector(SELECTORS.wronglyFilteredAction);
+  if (wfBtn) {
+    wfBtn.remove();
   }
 }
 
@@ -260,11 +489,15 @@ export function collapseTile(
   tile: Element,
   video: VideoInfo,
   verdict: Verdict,
+  settings?: Settings,
 ): HTMLElement {
   videoInfoMap.set(tile, video);
+  lastVerdictMap.set(tile, verdict);
+  lastVerdictByVideoMap.set(video.videoId, verdict);
   tile.classList.add(SELECTORS.collapsedClass);
 
   removeBlockButton(tile);
+  removeWronglyFilteredButton(tile);
 
   const existingCard = tile.querySelector(SELECTORS.card);
   const prevVideoId = collapsedTileVideoMap.get(tile);
@@ -278,6 +511,7 @@ export function collapseTile(
       existingChips.every((r, idx) => r === verdict.reasons[idx]);
 
     if (reasonsEqual) {
+      updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();
       return existingCard as HTMLElement;
     }
@@ -292,6 +526,7 @@ export function collapseTile(
         chip.textContent = reason;
         chipsContainer.appendChild(chip);
       }
+      updateFeedbackNote(existingCard, verdict, settings ?? currentSettings);
       updateBadgeCount();
       return existingCard as HTMLElement;
     }
@@ -301,7 +536,7 @@ export function collapseTile(
     existingCard.remove();
   }
 
-  const card = createCard(tile, video, verdict);
+  const card = createCard(tile, video, verdict, settings);
   tile.appendChild(card);
 
   if (prevVideoId !== video.videoId) {
@@ -334,8 +569,20 @@ export function revealTile(tile: Element, video: VideoInfo): void {
   markSessionRevealed(video.videoId);
   uncollapseTile(tile);
   onRevealed(tile, video);
-  if (video.channelHandle) {
-    attachBlockButton(tile, video);
+  attachBlockButton(tile, video, currentSettings ?? undefined, false);
+  const verdict =
+    lastVerdictMap.get(tile) || lastVerdictByVideoMap.get(video.videoId);
+  if (
+    verdict &&
+    verdict.source === 'patterns' &&
+    currentSettings?.feedbackConsent === 'granted'
+  ) {
+    attachWronglyFilteredButton(
+      tile,
+      video,
+      verdict,
+      currentSettings ?? undefined,
+    );
   }
   updateBadgeCount();
 }
@@ -362,7 +609,7 @@ export async function handleAlwaysAllow(handle: string): Promise<void> {
       normalizeChannelHandle(video.channelHandle) === normHandle
     ) {
       uncollapseTile(t);
-      attachBlockButton(t, video);
+      attachBlockButton(t, video, currentSettings ?? undefined, false);
     }
   }
 
@@ -402,7 +649,7 @@ export async function handleBlockChannel(
       video?.channelHandle &&
       normalizeChannelHandle(video.channelHandle) === normHandle
     ) {
-      collapseTile(t, video, blockVerdict);
+      collapseTile(t, video, blockVerdict, currentSettings ?? undefined);
     }
   }
 
@@ -418,9 +665,36 @@ export function evaluateAndProcessTile(
   patterns: Patterns,
   settings: Settings,
 ): void {
+  currentPatterns = patterns;
+  currentSettings = settings;
   videoInfoMap.set(tile, video);
 
   if (video.isShort) {
+    return;
+  }
+
+  // If reported as clickbait by user during this session
+  if (sessionReportedVideoIds.has(video.videoId)) {
+    if (sessionRevealedVideoIds.has(video.videoId)) {
+      if (tile.classList.contains(SELECTORS.collapsedClass)) {
+        uncollapseTile(tile);
+      }
+      if (settings.enabled) {
+        attachBlockButton(tile, video, settings, false);
+      } else {
+        removeBlockButton(tile);
+      }
+      return;
+    }
+    const reportedVerdict: Verdict = {
+      flagged: true,
+      score: 0,
+      reasons: ['Reported by you'],
+      matchedRuleIds: [],
+      matchedCategories: [],
+      source: 'user_reported',
+    };
+    collapseTile(tile, video, reportedVerdict, settings);
     return;
   }
 
@@ -433,20 +707,25 @@ export function evaluateAndProcessTile(
     if (tile.classList.contains(SELECTORS.collapsedClass)) {
       uncollapseTile(tile);
     }
-    if (video.channelHandle && settings.enabled) {
-      attachBlockButton(tile, video, settings);
+    if (settings.enabled) {
+      attachBlockButton(tile, video, settings, false);
     } else {
       removeBlockButton(tile);
+    }
+    if (settings.feedbackConsent === 'granted') {
+      attachWronglyFilteredButton(tile, video, verdict, settings);
+    } else {
+      removeWronglyFilteredButton(tile);
     }
     return;
   }
 
   if (verdict.flagged) {
-    collapseTile(tile, video, verdict);
+    collapseTile(tile, video, verdict, settings);
   } else {
     uncollapseTile(tile);
-    if (video.channelHandle && settings.enabled) {
-      attachBlockButton(tile, video, settings);
+    if (settings.enabled) {
+      attachBlockButton(tile, video, settings, !verdict.flagged);
     } else {
       removeBlockButton(tile);
     }
@@ -460,6 +739,9 @@ export function reEvaluateAllTiles(
   patterns: Patterns,
   settings: Settings,
 ): void {
+  currentPatterns = patterns;
+  currentSettings = settings;
+
   const root = document.body || document.documentElement;
   if (!root) return;
 
@@ -481,5 +763,9 @@ export function reEvaluateAllTiles(
  */
 export function resetCollapseState(): void {
   clearSessionRevealed();
+  sessionReportedVideoIds.clear();
+  sentFalsePositiveSessionVideoIds.clear();
+  currentSettings = null;
+  currentPatterns = null;
   lastBadgeCount = null;
 }
