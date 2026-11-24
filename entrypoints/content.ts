@@ -1,6 +1,8 @@
+import { initShorts } from '../src/platforms/youtube/shorts';
+
 export default defineContentScript({
   matches: ['*://www.youtube.com/*'],
   main() {
-    // Content script entrypoint for YouTube
+    initShorts();
   },
 });
