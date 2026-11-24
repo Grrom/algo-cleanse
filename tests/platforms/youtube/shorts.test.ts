@@ -179,8 +179,11 @@ describe('shorts remover', () => {
     );
     expect(shortsSidebarTile.style.display).toBe('none');
 
-    expect(customShortsTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(true);
-    expect(customShortsTile.style.display).toBe('none');
+    // Non-tile container linking to shorts is NOT hidden
+    expect(customShortsTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(
+      false,
+    );
+    expect(customShortsTile.style.display).not.toBe('none');
 
     // Regular video tile is NOT hidden
     expect(regularSearchTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(
@@ -196,6 +199,46 @@ describe('shorts remover', () => {
     expect(shortsSearchTile.style.display).not.toBe('none');
     expect(shortsHomeTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(false);
     expect(shortsHomeTile.style.display).not.toBe('none');
+  });
+
+  // Links in comments or video descriptions outside tiles must not be hidden
+  it('description or comment link outside tiles stays visible after hideShorts', () => {
+    const container = document.createElement('div');
+    const commentSpan = document.createElement('span');
+    commentSpan.className = 'yt-core-attributed-string';
+    commentSpan.innerHTML =
+      'Check out this cool clip: <a href="/shorts/abc12345">watch short</a> and let me know!';
+    container.appendChild(commentSpan);
+    document.body.appendChild(container);
+
+    hideShorts(container);
+
+    expect(commentSpan.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(false);
+    expect(commentSpan.style.display).not.toBe('none');
+    const link = commentSpan.querySelector('a');
+    expect(link?.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(false);
+    expect((link as HTMLElement)?.style.display).not.toBe('none');
+  });
+
+  // Restores previous inline display style when unhiding
+  it('restores previous inline display style when unhiding', () => {
+    const container = document.createElement('div');
+    const customShortsTile = document.createElement(
+      'ytm-shorts-lockup-view-model',
+    );
+    customShortsTile.style.display = 'inline-block';
+    container.appendChild(customShortsTile);
+    document.body.appendChild(container);
+
+    hideShorts(container);
+    expect(customShortsTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(true);
+    expect(customShortsTile.style.display).toBe('none');
+
+    showShorts(container);
+    expect(customShortsTile.classList.contains(HIDDEN_SHORTS_CLASS)).toBe(
+      false,
+    );
+    expect(customShortsTile.style.display).toBe('inline-block');
   });
 
   // shortsRedirectUrl('https://www.youtube.com/shorts/abc?feature=x') -> https://www.youtube.com/watch?v=abc; non-Shorts URL -> null
@@ -282,7 +325,7 @@ describe('shorts remover', () => {
   });
 
   // When hideShorts is true, location.replace to it on initial load and SPA navigation
-  it('When hideShorts is true, location.replace to it on initial load and SPA navigation', () => {
+  it('When hideShorts is true, location.replace to it on initial load and SPA navigation', async () => {
     const replaceMock = vi.fn();
 
     // 1. Initial load on Shorts URL when hideShorts is true
@@ -308,7 +351,9 @@ describe('shorts remover', () => {
 
     // 3. SPA navigation event yt-navigate-finish triggers redirect when on Shorts URL
     replaceMock.mockClear();
+    await updateSettings({ hideShorts: true });
     stopInit = initShorts();
+    await new Promise((r) => setTimeout(r, 20));
 
     // Mock window.location
     const originalLocation = window.location;
@@ -326,6 +371,61 @@ describe('shorts remover', () => {
       expect(replaceMock).toHaveBeenCalledWith(
         'https://www.youtube.com/watch?v=spaShort123',
       );
+    } finally {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
+  // Redirect on initial load via initShorts
+  it('redirects to watch URL on initial load via initShorts when hideShorts is true', async () => {
+    const replaceMock = vi.fn();
+    const originalLocation = window.location;
+    try {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: {
+          href: 'https://www.youtube.com/shorts/initialLoadShort123',
+          replace: replaceMock,
+        },
+      });
+
+      await updateSettings({ hideShorts: true });
+      stopInit = initShorts();
+
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(replaceMock).toHaveBeenCalledWith(
+        'https://www.youtube.com/watch?v=initialLoadShort123',
+      );
+    } finally {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
+  it('does not redirect on initial load via initShorts when hideShorts is false', async () => {
+    const replaceMock = vi.fn();
+    const originalLocation = window.location;
+    try {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: {
+          href: 'https://www.youtube.com/shorts/initialLoadShort123',
+          replace: replaceMock,
+        },
+      });
+
+      await updateSettings({ hideShorts: false });
+      stopInit = initShorts();
+
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(replaceMock).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(window, 'location', {
         writable: true,

@@ -180,6 +180,11 @@ export const VIDEO_DURATION = [
 export const DATA_AC_VIDEO_ID = 'data-ac-video-id' as const;
 
 /**
+ * Attribute name used to store previous inline display style when hiding Shorts elements.
+ */
+export const DATA_AC_PREV_DISPLAY = 'data-ac-prev-display' as const;
+
+/**
  * Selector matching tiles that have been processed with data-ac-video-id.
  */
 export const PROCESSED_TILE_SELECTOR = `[${DATA_AC_VIDEO_ID}]` as const;
@@ -215,6 +220,7 @@ export const SELECTORS = {
   channelName: CHANNEL_NAME,
   duration: VIDEO_DURATION,
   videoIdAttr: DATA_AC_VIDEO_ID,
+  prevDisplayAttr: DATA_AC_PREV_DISPLAY,
   processedTile: PROCESSED_TILE_SELECTOR,
   navigateFinishEvent: YT_NAVIGATE_FINISH_EVENT,
 } as const;

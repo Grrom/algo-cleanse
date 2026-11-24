@@ -79,12 +79,23 @@ export function handleShortsRedirect(
 
 function hideElement(el: Element): void {
   el.classList.add(HIDDEN_SHORTS_CLASS);
-  (el as HTMLElement).style.display = 'none';
+  const htmlEl = el as HTMLElement;
+  if (!htmlEl.hasAttribute(SELECTORS.prevDisplayAttr)) {
+    htmlEl.setAttribute(SELECTORS.prevDisplayAttr, htmlEl.style.display);
+  }
+  htmlEl.style.display = 'none';
 }
 
 function unhideElement(el: Element): void {
   el.classList.remove(HIDDEN_SHORTS_CLASS);
-  (el as HTMLElement).style.display = '';
+  const htmlEl = el as HTMLElement;
+  const prevDisplay = htmlEl.getAttribute(SELECTORS.prevDisplayAttr);
+  if (prevDisplay !== null) {
+    htmlEl.style.display = prevDisplay;
+    htmlEl.removeAttribute(SELECTORS.prevDisplayAttr);
+  } else {
+    htmlEl.style.display = '';
+  }
 }
 
 /**
@@ -92,20 +103,31 @@ function unhideElement(el: Element): void {
  * Applied elements receive class 'ac-hidden-shorts' and inline style 'display: none'.
  */
 export function hideShorts(root: ParentNode = document): void {
-  // 1. Elements matching SHORTS_SELECTORS (shelves, reel items, shorts lockups, guide entries)
-  if (root instanceof Element && root.matches(SELECTORS.shorts)) {
+  // 1. Elements matching SHORTS_CONTAINER_SELECTORS (shelves, reel items, shorts lockups)
+  if (
+    root instanceof Element &&
+    root.matches(SELECTORS.shortsContainerSelector)
+  ) {
     hideElement(root);
   }
-  const matchingShorts = root.querySelectorAll(SELECTORS.shorts);
-  for (const el of matchingShorts) {
+  const matchingContainers = root.querySelectorAll(
+    SELECTORS.shortsContainerSelector,
+  );
+  for (const el of matchingContainers) {
     hideElement(el);
   }
 
-  // 2. Extra guide link fallback for environments without full :has support
-  if (root instanceof Element && root.matches(SELECTORS.shortsGuideLink)) {
-    const entry = root.closest(SELECTORS.shortsGuideEntry);
-    if (entry) {
-      hideElement(entry);
+  // 2. Guide navigation entries in sidebar / mini-guide
+  if (root instanceof Element) {
+    if (root.matches(SELECTORS.shortsGuideLink)) {
+      const entry = root.closest(SELECTORS.shortsGuideEntry);
+      if (entry) {
+        hideElement(entry);
+      }
+    } else if (root.matches(SELECTORS.shortsGuideEntry)) {
+      if (root.querySelector(SELECTORS.shortsGuideLink)) {
+        hideElement(root);
+      }
     }
   }
   const guideLinks = root.querySelectorAll(SELECTORS.shortsGuideLink);
@@ -137,30 +159,25 @@ export function hideShorts(root: ParentNode = document): void {
     }
   }
 
-  // 4. Any element containing a Shorts link
+  // 4. Any tile containing a Shorts link
   const shortsLinks = root.querySelectorAll(SELECTORS.shortsLink);
   for (const link of shortsLinks) {
     const tile = link.closest(SELECTORS.tile);
     if (tile) {
       hideElement(tile);
-    } else if (
-      link.parentElement &&
-      link.parentElement !== document.body &&
-      link.parentElement !== document.documentElement
-    ) {
-      hideElement(link.parentElement);
     }
   }
 
   // If root itself is a tile linking to shorts or with isShort true
-  if (
-    root instanceof Element &&
-    root !== document.body &&
-    root !== document.documentElement
-  ) {
-    const video = extractVideo(root);
-    if (video?.isShort || root.matches(SELECTORS.shortsLink)) {
-      hideElement(root);
+  if (root instanceof Element) {
+    const tile = root.matches(SELECTORS.tile)
+      ? root
+      : root.closest(SELECTORS.tile);
+    if (tile) {
+      const video = extractVideo(tile);
+      if (video?.isShort || root.matches(SELECTORS.shortsLink)) {
+        hideElement(tile);
+      }
     }
   }
 }
@@ -202,7 +219,7 @@ export function updateShorts(
  * Returns a teardown function.
  */
 export function initShorts(): () => void {
-  let activeHideShorts = true;
+  let activeHideShorts: boolean | null = null;
 
   const apply = (hide: boolean) => {
     activeHideShorts = hide;
@@ -227,7 +244,7 @@ export function initShorts(): () => void {
   // 3. Batched MutationObserver for dynamically loaded content
   let rafId: number | null = null;
   const scheduleHide = () => {
-    if (!activeHideShorts || rafId !== null) {
+    if (activeHideShorts !== true || rafId !== null) {
       return;
     }
     const requestFrame =
@@ -237,14 +254,14 @@ export function initShorts(): () => void {
 
     rafId = requestFrame(() => {
       rafId = null;
-      if (activeHideShorts) {
+      if (activeHideShorts === true) {
         hideShorts(document);
       }
     });
   };
 
   const observer = new MutationObserver(() => {
-    if (activeHideShorts) {
+    if (activeHideShorts === true) {
       scheduleHide();
     }
   });
@@ -259,7 +276,7 @@ export function initShorts(): () => void {
 
   // 4. SPA navigation handler
   const onNavigate = () => {
-    if (activeHideShorts) {
+    if (activeHideShorts === true) {
       handleShortsRedirect(activeHideShorts);
       scheduleHide();
     }
