@@ -12,11 +12,15 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
 
     // Clickbait tile should be collapsed with [data-ac-card] and at least one reason chip
     await expect(clickbaitTile.locator('[data-ac-card]')).toBeVisible();
+    await expect(clickbaitTile).toHaveClass(/ac-collapsed/);
+    await expect(clickbaitTile.locator('#video-title-link')).toBeHidden();
     const chipsCount = await clickbaitTile.locator('[data-ac-chip]').count();
     expect(chipsCount).toBeGreaterThan(0);
 
     // Clean tile should have no card
     await expect(cleanTile.locator('[data-ac-card]')).toHaveCount(0);
+    await expect(cleanTile).not.toHaveClass(/ac-collapsed/);
+    await expect(cleanTile.locator('#video-title-link')).toBeVisible();
   });
 
   // Acceptance criterion 2: Clicking [data-ac-action=show] removes the card and shows the original tile
@@ -47,6 +51,8 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
     const shortsShelf = page.locator(
       '#shorts-shelf, ytd-rich-shelf-renderer[is-shorts]',
     );
+    await expect(shortsShelf).toHaveCount(1);
+    await expect(shortsShelf).toHaveClass(/ac-hidden-shorts/);
     await expect(shortsShelf).not.toBeVisible();
   });
 
@@ -101,6 +107,8 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
 
     const infiniteTile = page.locator('#infinite-clickbait-tile');
     await expect(infiniteTile.locator('[data-ac-card]')).toBeVisible();
+    await expect(infiniteTile).toHaveClass(/ac-collapsed/);
+    await expect(infiniteTile.locator('#video-title-link')).toBeHidden();
     const chipsCount = await infiniteTile.locator('[data-ac-chip]').count();
     expect(chipsCount).toBeGreaterThan(0);
   });
@@ -113,6 +121,8 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
 
     const cleanTile = page.locator('#clean-tile');
     await expect(cleanTile.locator('[data-ac-card]')).toHaveCount(0);
+    await expect(cleanTile).not.toHaveClass(/ac-collapsed/);
+    await expect(cleanTile.locator('#video-title-link')).toBeVisible();
 
     // Hover over clean tile to show block button
     await cleanTile.hover();
@@ -124,6 +134,8 @@ test.describe('AlgoCleanse E2E smoke tests', () => {
 
     // Clean tile should now be collapsed with "You blocked this channel" reason
     await expect(cleanTile.locator('[data-ac-card]')).toBeVisible();
+    await expect(cleanTile).toHaveClass(/ac-collapsed/);
+    await expect(cleanTile.locator('#video-title-link')).toBeHidden();
     await expect(cleanTile.locator('[data-ac-chip]')).toContainText(
       'You blocked this channel',
     );

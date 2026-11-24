@@ -1,3 +1,15 @@
+<!--
+  YouTube Home E2E Fixture Page
+  Built from scanner fixtures:
+  - tests/fixtures/youtube/home-clickbait.html:
+      * Tile 1: clickbait ytd-rich-grid-media with id="clickbait-tile"
+      * Tile 2: clean tile adapted to ytd-rich-grid-media with id="clean-tile" and channel @DevMastery for hover-block interaction
+  - tests/fixtures/youtube/shorts-shelf.html:
+      * Shorts shelf: ytd-rich-shelf-renderer[is-shorts] with id="shorts-shelf"
+  Modifications:
+  - Added unique id attributes (#clickbait-tile, #clean-tile, #shorts-shelf) for test targeting
+  - Base display styling added in <style> block so custom elements have block layout and dimensions in headless Chromium
+-->
 <!doctype html>
 <html lang="en">
   <head>
