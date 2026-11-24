@@ -1,7 +1,8 @@
 import type { Patterns, RegexRule, Rule } from './patterns-schema';
 import type { Settings, VideoInfo } from './types';
 
-export type VerdictSource = 'allowlist' | 'blocklist' | 'patterns' | 'none';
+export type VerdictSource =
+  'allowlist' | 'blocklist' | 'patterns' | 'none' | 'user_reported';
 
 export interface Verdict {
   flagged: boolean;
