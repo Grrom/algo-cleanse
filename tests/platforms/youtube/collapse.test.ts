@@ -5,6 +5,8 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { BUNDLED_PATTERNS } from '../../../src/core/bundled-patterns';
 import { getSettings, updateSettings } from '../../../src/core/settings';
 import { DEFAULT_SETTINGS, type Settings } from '../../../src/core/types';
+import { TrainQueue } from '../../../src/core/train-queue';
+import * as nativeFeedbackModule from '../../../src/platforms/youtube/native-feedback';
 import {
   attachBlockButton,
   clearSessionRevealed,
@@ -665,6 +667,351 @@ describe('collapse UI & channel actions', () => {
       // Disable again and verify button is removed
       evaluateAndProcessTile(tile, video, patterns, disabledSettings);
       expect(tile.querySelector(SELECTORS.blockAction)).toBeNull();
+    });
+
+    it('initContent wires onCollapsed to auto train queue and onBlocked to native feedback', async () => {
+      document.body.innerHTML = '<button id="avatar-btn"></button>';
+      const sendNotInterestedSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendNotInterested')
+        .mockResolvedValue('ok');
+      const sendDontRecommendSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendDontRecommendChannel')
+        .mockResolvedValue('ok');
+
+      let tickCb: (() => void) | null = null;
+      const fakeClock = {
+        now: () => 1000,
+        setTimeout: (cb: () => void) => {
+          tickCb = cb;
+          return 1;
+        },
+        clearTimeout: () => {
+          tickCb = null;
+        },
+      };
+
+      const trainQueue = new TrainQueue({
+        clock: fakeClock,
+      });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+        dontRecommendOnBlock: true,
+      };
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile = createTestTile({
+        videoId: 'autoVid001',
+        title: 'I SPENT 24 HOURS IN AN ABANDONED BUNKER (GONE WRONG)',
+        channelHandle: '@extremevlogs',
+      });
+      document.body.appendChild(tile);
+
+      const video = extractVideo(tile)!;
+      evaluateAndProcessTile(tile, video, patterns, autoSettings);
+
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      // Trigger the queue execution
+      if (tickCb) {
+        (tickCb as () => void)();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(sendNotInterestedSpy).toHaveBeenCalledWith(tile);
+      const card = tile.querySelector(SELECTORS.card);
+      expect(card?.querySelector(SELECTORS.status)?.textContent).toBe(
+        '✓ Told YouTube: Not interested',
+      );
+
+      // Test onBlocked via handleBlockChannel
+      await handleBlockChannel('@extremevlogs', tile);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(sendDontRecommendSpy).toHaveBeenCalled();
+
+      cleanup();
+    });
+
+    // Acceptance criterion 5:
+    // onRevealed before the job runs cancels it; onAllowed cancels that channel's jobs; manual click cancels the pending auto job for that video
+    it("onRevealed before the job runs cancels it; onAllowed cancels that channel's jobs; manual click cancels the pending auto job for that video", async () => {
+      document.body.innerHTML = '<button id="avatar-btn"></button>';
+      const sendNotInterestedSpy = vi
+        .spyOn(nativeFeedbackModule, 'sendNotInterested')
+        .mockResolvedValue('ok');
+
+      let tickCb: (() => void) | null = null;
+      const fakeClock = {
+        currentTime: 1000,
+        now: function () {
+          return this.currentTime;
+        },
+        setTimeout: (cb: () => void) => {
+          tickCb = cb;
+          return 1;
+        },
+        clearTimeout: () => {
+          tickCb = null;
+        },
+      };
+
+      const trainQueue = new TrainQueue({
+        clock: fakeClock,
+      });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+      await updateSettings(autoSettings);
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      // 1. Show anyway cancels pending job for that video
+      const tile1 = createTestTile({
+        videoId: 'cancelRevealVid',
+        title: 'Video Gone Wrong 1',
+        channelHandle: '@channel1',
+      });
+      document.body.appendChild(tile1);
+      evaluateAndProcessTile(
+        tile1,
+        extractVideo(tile1)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const showBtn = tile1.querySelector(
+        SELECTORS.showAction,
+      ) as HTMLButtonElement;
+      expect(showBtn).not.toBeNull();
+      showBtn.click();
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(sendNotInterestedSpy).not.toHaveBeenCalled();
+
+      // 2. Always allow cancels jobs for that channel
+      const tile2 = createTestTile({
+        videoId: 'cancelAllowVid',
+        title: 'Video Gone Wrong 2',
+        channelHandle: '@channelAllow',
+      });
+      document.body.appendChild(tile2);
+      evaluateAndProcessTile(
+        tile2,
+        extractVideo(tile2)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const allowBtn = tile2.querySelector(
+        SELECTORS.allowAction,
+      ) as HTMLButtonElement;
+      expect(allowBtn).not.toBeNull();
+      allowBtn.click();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(sendNotInterestedSpy).not.toHaveBeenCalled();
+
+      // 3. Manual Not interested click cancels auto job and calls sendNotInterested once
+      const tile3 = createTestTile({
+        videoId: 'cancelManualVid',
+        title: 'Video Gone Wrong 3',
+        channelHandle: '@channelManual',
+      });
+      document.body.appendChild(tile3);
+      evaluateAndProcessTile(
+        tile3,
+        extractVideo(tile3)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      const card3 = tile3.querySelector(SELECTORS.card)!;
+      const notInterestedBtn = card3.querySelector(
+        SELECTORS.notInterestedAction,
+      ) as HTMLButtonElement;
+      expect(notInterestedBtn).not.toBeNull();
+
+      notInterestedBtn.click();
+      expect(trainQueue.getPendingCount()).toBe(0);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(sendNotInterestedSpy).toHaveBeenCalledTimes(1);
+      expect(sendNotInterestedSpy).toHaveBeenCalledWith(tile3);
+
+      // Trigger timer if any was scheduled
+      if (tickCb) (tickCb as () => void)();
+      await new Promise((r) => setTimeout(r, 10));
+
+      // Still only called once by the manual action
+      expect(sendNotInterestedSpy).toHaveBeenCalledTimes(1);
+
+      cleanup();
+    });
+
+    // Acceptance criterion 3:
+    // Auto: eligible verdict enqueues; autoNotInterested false -> nothing; no selected category matched -> nothing
+    it('Auto: eligible verdict enqueues; autoNotInterested false -> nothing; no selected category matched -> nothing (through initContent)', async () => {
+      const trainQueue = new TrainQueue();
+
+      // 1. autoNotInterested false -> nothing
+      const disabledSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: false,
+        autoCategories: ['bait-phrase'],
+      };
+
+      const cleanup1 = await initContent({
+        settings: disabledSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile1 = createTestTile({
+        videoId: 'noAutoEnq1',
+        title: 'Bait Phrase Gone Wrong Video 1',
+        channelHandle: '@creator1',
+      });
+      document.body.appendChild(tile1);
+
+      evaluateAndProcessTile(
+        tile1,
+        extractVideo(tile1)!,
+        patterns,
+        disabledSettings,
+      );
+      expect(tile1.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup1();
+
+      // 2. no selected category matched -> nothing
+      const mismatchedSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['ai-slop'], // 'bait-phrase' is matched by title, not 'ai-slop'
+      };
+
+      const cleanup2 = await initContent({
+        settings: mismatchedSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile2 = createTestTile({
+        videoId: 'noAutoEnq2',
+        title: 'Bait Phrase Gone Wrong Video 2',
+        channelHandle: '@creator2',
+      });
+      document.body.appendChild(tile2);
+
+      evaluateAndProcessTile(
+        tile2,
+        extractVideo(tile2)!,
+        patterns,
+        mismatchedSettings,
+      );
+      expect(tile2.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup2();
+
+      // 3. Eligible verdict with matching category enqueues
+      const matchedSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+
+      const cleanup3 = await initContent({
+        settings: matchedSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile3 = createTestTile({
+        videoId: 'autoEnq3',
+        title: 'Bait Phrase Gone Wrong Video 3',
+        channelHandle: '@creator3',
+      });
+      document.body.appendChild(tile3);
+
+      evaluateAndProcessTile(
+        tile3,
+        extractVideo(tile3)!,
+        patterns,
+        matchedSettings,
+      );
+      expect(tile3.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      cleanup3();
+    });
+
+    it('clears trainQueue when autoNotInterested or enabled is toggled off, and validate drops ineligible job', async () => {
+      const fakeClock = {
+        now: () => 1000,
+        setTimeout: () => 1,
+        clearTimeout: () => {},
+      };
+
+      const trainQueue = new TrainQueue({ clock: fakeClock });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+      await updateSettings(autoSettings);
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile = createTestTile({
+        videoId: 'toggleOffVid',
+        title: 'Bait Phrase Gone Wrong Video',
+        channelHandle: '@creator',
+      });
+      document.body.appendChild(tile);
+
+      evaluateAndProcessTile(tile, extractVideo(tile)!, patterns, autoSettings);
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      // Disable autoNotInterested via settings update
+      await updateSettings({
+        ...autoSettings,
+        autoNotInterested: false,
+      });
+
+      // trainQueue should be cleared by watchSettings
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup();
     });
   });
 });

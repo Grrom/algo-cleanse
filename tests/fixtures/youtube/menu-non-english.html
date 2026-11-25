@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Menu Non-English Fixture</title>
+  </head>
+  <body>
+    <ytd-app>
+      <!-- Topbar signed in indicator -->
+      <div id="masthead">
+        <button id="avatar-btn" aria-label="Compte Google">Avatar</button>
+      </div>
+
+      <div id="content">
+        <!-- Video Tile -->
+        <ytd-rich-item-renderer class="style-scope ytd-rich-grid-row">
+          <div id="content">
+            <ytd-rich-grid-media>
+              <div id="thumbnail">
+                <a
+                  id="thumbnail"
+                  class="yt-simple-endpoint inline-block style-scope ytd-thumbnail"
+                  href="/watch?v=nonEnglishVid001"
+                >
+                  <span class="ytd-thumbnail-overlay-time-status-renderer"
+                    >12:34</span
+                  >
+                </a>
+              </div>
+              <div id="details">
+                <div id="meta">
+                  <h3 class="style-scope ytd-rich-grid-media">
+                    <a
+                      id="video-title-link"
+                      class="yt-simple-endpoint style-scope ytd-rich-grid-media"
+                      title="Vidéo Piège à Clics"
+                      href="/watch?v=nonEnglishVid001"
+                    >
+                      <yt-formatted-string id="video-title"
+                        >Vidéo Piège à Clics</yt-formatted-string
+                      >
+                    </a>
+                  </h3>
+                  <div id="channel-info">
+                    <ytd-channel-name id="channel-name">
+                      <div id="container">
+                        <div id="text-container">
+                          <yt-formatted-string
+                            id="text"
+                            title="Chaîne Française"
+                          >
+                            <a
+                              class="yt-simple-endpoint style-scope yt-formatted-string"
+                              href="/@chainefrancaise"
+                              >Chaîne Française</a
+                            >
+                          </yt-formatted-string>
+                        </div>
+                      </div>
+                    </ytd-channel-name>
+                  </div>
+                </div>
+                <div id="menu">
+                  <ytd-menu-renderer>
+                    <yt-icon-button id="button">
+                      <button aria-label="Menu d'actions">⋮</button>
+                    </yt-icon-button>
+                  </ytd-menu-renderer>
+                </div>
+              </div>
+            </ytd-rich-grid-media>
+          </div>
+        </ytd-rich-item-renderer>
+      </div>
+
+      <!-- YouTube Popup Container -->
+      <ytd-popup-container>
+        <tp-yt-iron-dropdown>
+          <ytd-menu-popup-renderer class="style-scope ytd-popup-container">
+            <div id="items" class="style-scope ytd-menu-popup-renderer">
+              <!-- Item 0: Share / Partager -->
+              <ytd-menu-service-item-renderer
+                class="style-scope ytd-menu-popup-renderer"
+              >
+                <tp-yt-paper-item>
+                  <yt-icon icon="share"></yt-icon>
+                  <yt-formatted-string>Partager</yt-formatted-string>
+                </tp-yt-paper-item>
+              </ytd-menu-service-item-renderer>
+
+              <!-- Item 1: Not interested / Pas intéressé (no icon attribute so only data matches) -->
+              <ytd-menu-service-item-renderer
+                class="style-scope ytd-menu-popup-renderer"
+              >
+                <tp-yt-paper-item>
+                  <yt-icon></yt-icon>
+                  <yt-formatted-string>Pas intéressé</yt-formatted-string>
+                </tp-yt-paper-item>
+              </ytd-menu-service-item-renderer>
+
+              <!-- Item 2: Don't recommend channel / Ne pas recommander la chaîne (no icon attribute so only data matches) -->
+              <ytd-menu-service-item-renderer
+                class="style-scope ytd-menu-popup-renderer"
+              >
+                <tp-yt-paper-item>
+                  <yt-icon></yt-icon>
+                  <yt-formatted-string
+                    >Ne pas recommander la chaîne</yt-formatted-string
+                  >
+                </tp-yt-paper-item>
+              </ytd-menu-service-item-renderer>
+            </div>
+          </ytd-menu-popup-renderer>
+        </tp-yt-iron-dropdown>
+      </ytd-popup-container>
+
+      <script type="application/json" data-ac-fixture="menu">
+        {
+          "tileData": {
+            "menu": {
+              "menuRenderer": {
+                "items": [
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "SHARE" },
+                      "text": { "runs": [{ "text": "Partager" }] }
+                    }
+                  },
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "NOT_INTERESTED" },
+                      "serviceEndpoint": {
+                        "feedbackEndpoint": {
+                          "feedbackToken": "AB987_ni_token"
+                        }
+                      },
+                      "text": { "runs": [{ "text": "Pas intéressé" }] }
+                    }
+                  },
+                  {
+                    "menuServiceItemRenderer": {
+                      "icon": { "iconType": "REMOVE" },
+                      "serviceEndpoint": {
+                        "feedbackEndpoint": {
+                          "feedbackToken": "AB987_dr_token"
+                        }
+                      },
+                      "text": {
+                        "runs": [{ "text": "Ne pas recommander la chaîne" }]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "itemsData": [
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "SHARE" },
+                "text": { "runs": [{ "text": "Partager" }] }
+              }
+            },
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "NOT_INTERESTED" },
+                "serviceEndpoint": {
+                  "feedbackEndpoint": {
+                    "feedbackToken": "AB987_ni_token"
+                  }
+                },
+                "text": { "runs": [{ "text": "Pas intéressé" }] }
+              }
+            },
+            {
+              "menuServiceItemRenderer": {
+                "icon": { "iconType": "REMOVE" },
+                "serviceEndpoint": {
+                  "feedbackEndpoint": {
+                    "feedbackToken": "AB987_dr_token"
+                  }
+                },
+                "text": { "runs": [{ "text": "Ne pas recommander la chaîne" }] }
+              }
+            }
+          ]
+        }
+      </script>
+    </ytd-app>
+  </body>
+</html>

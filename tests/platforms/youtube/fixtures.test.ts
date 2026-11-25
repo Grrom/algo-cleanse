@@ -164,5 +164,30 @@ describe('fixtures extractVideo', () => {
       durationText: null,
       isShort: true,
     });
+
+    // 5. Menu Non-English fixture
+    const nonEnglishHtml = readFileSync(
+      resolve(__dirname, '../../fixtures/youtube/menu-non-english.html'),
+      'utf-8',
+    );
+    expect(nonEnglishHtml).toMatch(/^<!DOCTYPE html>/i);
+
+    const nonEnglishContainer = document.createElement('div');
+    nonEnglishContainer.innerHTML = nonEnglishHtml;
+    const nonEnglishTiles = Array.from(
+      nonEnglishContainer.querySelectorAll(SELECTORS.tile),
+    );
+    expect(nonEnglishTiles.length).toBe(1);
+
+    const nonEnglishTile = nonEnglishTiles[0]!;
+    const nonEnglishVideo = extractVideo(nonEnglishTile);
+    expect(nonEnglishVideo).toEqual({
+      videoId: 'nonEnglishVid001',
+      title: 'Vidéo Piège à Clics',
+      channelHandle: '@chainefrancaise',
+      channelName: 'Chaîne Française',
+      durationText: '12:34',
+      isShort: false,
+    });
   });
 });

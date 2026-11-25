@@ -124,6 +124,76 @@ export const TILE_MENU_BUTTON_SELECTORS = [
 export const TILE_MENU_BUTTON = TILE_MENU_BUTTON_SELECTORS.join(', ');
 
 /**
+ * Account avatar button selectors when signed in.
+ * When the user is signed in to YouTube, the topbar renders an avatar button (#avatar-btn).
+ */
+export const ACCOUNT_AVATAR_SELECTORS = [
+  'ytd-masthead #avatar-btn',
+  'ytd-topbar-menu-button-renderer #avatar-btn',
+  '#avatar-btn',
+  'button#avatar-btn',
+] as const;
+
+export const ACCOUNT_AVATAR = ACCOUNT_AVATAR_SELECTORS.join(', ');
+
+/**
+ * YouTube menu popup container and items selectors.
+ */
+export const MENU_POPUP_RENDERER_SELECTORS = [
+  'ytd-menu-popup-renderer',
+  'tp-yt-iron-dropdown',
+  'ytd-popup-container',
+] as const;
+
+export const MENU_POPUP_RENDERER = MENU_POPUP_RENDERER_SELECTORS.join(', ');
+
+/**
+ * Open menu popup container selectors.
+ * Matches active open menu popup renderer inside the iron-dropdown without matching closed containers.
+ */
+export const OPEN_MENU_POPUP_SELECTORS = [
+  'tp-yt-iron-dropdown:not([aria-hidden="true"]) ytd-menu-popup-renderer',
+  'tp-yt-iron-dropdown[opened] ytd-menu-popup-renderer',
+  'ytd-menu-popup-renderer[opened]',
+  'tp-yt-iron-dropdown:not([aria-hidden="true"])',
+  'tp-yt-iron-dropdown[opened]',
+] as const;
+
+export const OPEN_MENU_POPUP = OPEN_MENU_POPUP_SELECTORS.join(', ');
+
+export const MENU_DROPDOWN = 'tp-yt-iron-dropdown' as const;
+
+export const MENU_POPUP_ITEMS_SELECTORS = [
+  'ytd-menu-service-item-renderer',
+  'ytd-menu-navigation-item-renderer',
+  'tp-yt-paper-item',
+  'yt-list-item-view-model',
+] as const;
+
+export const MENU_POPUP_ITEMS = MENU_POPUP_ITEMS_SELECTORS.join(', ');
+
+export const MENU_CLICK_TARGET_SELECTORS = [
+  'ytd-menu-renderer',
+  '.yt-lockup-view-model-wiz__menu',
+  'yt-icon-button',
+] as const;
+
+export const MENU_CLICK_TARGET = MENU_CLICK_TARGET_SELECTORS.join(', ');
+
+export const MENU_ITEM_BUTTON_SELECTORS = [
+  'button',
+  'tp-yt-paper-item',
+  'yt-formatted-string',
+  'a',
+] as const;
+
+export const MENU_ITEM_BUTTON = MENU_ITEM_BUTTON_SELECTORS.join(', ');
+
+export const MENU_BACKDROP = 'tp-yt-iron-overlay-backdrop' as const;
+
+export const MENU_ITEM_ICON = 'yt-icon, yt-icon-shape, svg' as const;
+
+/**
  * Links pointing to a video (/watch?v=) or Short (/shorts/).
  */
 export const VIDEO_LINK = 'a[href*="/watch?v="], a[href*="/shorts/"]' as const;
@@ -224,6 +294,8 @@ export const AC_ACTION_SELECTOR = `[${AC_ACTION_ATTR}]` as const;
 export const AC_SHOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="show"]` as const;
 export const AC_ALLOW_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="allow"]` as const;
 export const AC_BLOCK_ACTION_SELECTOR = `[${AC_ACTION_ATTR}="block"]` as const;
+export const AC_NOT_INTERESTED_ACTION_SELECTOR =
+  `[${AC_ACTION_ATTR}="not-interested"]` as const;
 export const AC_WRONGLY_FILTERED_ACTION_SELECTOR =
   `[${AC_ACTION_ATTR}="wrongly-filtered"]` as const;
 export const AC_CLICKBAIT_ACTION_SELECTOR =
@@ -278,6 +350,26 @@ export const AC_CHANNEL_ATTR = 'data-ac-channel' as const;
 export const AC_CHANNEL_SELECTOR = `[${AC_CHANNEL_ATTR}]` as const;
 
 /**
+ * Attributes used during native feedback handshake.
+ */
+export const DATA_AC_RESOLVE_ID = 'data-ac-resolve-id' as const;
+export const DATA_AC_ITEM_TYPE = 'data-ac-item-type' as const;
+
+export const RESOLVE_ID_SELECTOR = `[${DATA_AC_RESOLVE_ID}]` as const;
+
+export const RESOLVED_TARGET_SELECTOR = (resolveId: string) =>
+  `[${DATA_AC_RESOLVE_ID}="${resolveId}"]` as const;
+
+export const RESOLVED_POPUP_SELECTOR = (resolveId: string) =>
+  `ytd-menu-popup-renderer[${DATA_AC_RESOLVE_ID}="${resolveId}"], tp-yt-iron-dropdown[${DATA_AC_RESOLVE_ID}="${resolveId}"], ytd-popup-container [${DATA_AC_RESOLVE_ID}="${resolveId}"], [${DATA_AC_RESOLVE_ID}="${resolveId}"]:not([data-ac-video-id]):not(.${AC_TILE_CLASS})` as const;
+
+/**
+ * Custom event names for isolated <-> MAIN world communication.
+ */
+export const AC_RESOLVE_MENU_EVENT = 'ac-resolve-menu' as const;
+export const AC_MENU_RESOLVED_EVENT = 'ac-menu-resolved' as const;
+
+/**
  * Centralized SELECTORS object.
  */
 export const SELECTORS = {
@@ -297,6 +389,28 @@ export const SELECTORS = {
   hiddenShorts: HIDDEN_SHORTS_SELECTOR,
   tileMenuButton: TILE_MENU_BUTTON,
   tileMenuButtonSelectors: TILE_MENU_BUTTON_SELECTORS,
+  accountAvatar: ACCOUNT_AVATAR,
+  accountAvatarSelectors: ACCOUNT_AVATAR_SELECTORS,
+  menuPopupRenderer: MENU_POPUP_RENDERER,
+  menuPopupRendererSelectors: MENU_POPUP_RENDERER_SELECTORS,
+  openMenuPopup: OPEN_MENU_POPUP,
+  openMenuPopupSelectors: OPEN_MENU_POPUP_SELECTORS,
+  menuDropdown: MENU_DROPDOWN,
+  menuPopupItems: MENU_POPUP_ITEMS,
+  menuPopupItemsSelectors: MENU_POPUP_ITEMS_SELECTORS,
+  menuClickTarget: MENU_CLICK_TARGET,
+  menuClickTargetSelectors: MENU_CLICK_TARGET_SELECTORS,
+  menuItemButton: MENU_ITEM_BUTTON,
+  menuItemButtonSelectors: MENU_ITEM_BUTTON_SELECTORS,
+  menuBackdrop: MENU_BACKDROP,
+  menuItemIcon: MENU_ITEM_ICON,
+  resolveIdAttr: DATA_AC_RESOLVE_ID,
+  resolveIdSelector: RESOLVE_ID_SELECTOR,
+  resolvedPopup: RESOLVED_POPUP_SELECTOR,
+  resolveTarget: RESOLVED_TARGET_SELECTOR,
+  itemTypeAttr: DATA_AC_ITEM_TYPE,
+  resolveMenuEvent: AC_RESOLVE_MENU_EVENT,
+  menuResolvedEvent: AC_MENU_RESOLVED_EVENT,
   videoLink: VIDEO_LINK,
   title: VIDEO_TITLE,
   channelHandle: CHANNEL_HANDLE,
@@ -317,6 +431,7 @@ export const SELECTORS = {
   showAction: AC_SHOW_ACTION_SELECTOR,
   allowAction: AC_ALLOW_ACTION_SELECTOR,
   blockAction: AC_BLOCK_ACTION_SELECTOR,
+  notInterestedAction: AC_NOT_INTERESTED_ACTION_SELECTOR,
   wronglyFilteredAction: AC_WRONGLY_FILTERED_ACTION_SELECTOR,
   clickbaitAction: AC_CLICKBAIT_ACTION_SELECTOR,
   feedbackNoteAttr: AC_FEEDBACK_NOTE_ATTR,
