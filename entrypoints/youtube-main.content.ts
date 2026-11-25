@@ -171,9 +171,11 @@ export function unwrapMenuItemData(
  * not display:none, or [opened]).
  */
 export function getActivePopup(
-  root: Document | Element = document,
+  root?: Document | Element,
 ): Element | null {
-  const candidates = root.querySelectorAll(SELECTORS.openMenuPopup);
+  const doc = root ?? (typeof document !== 'undefined' ? document : null);
+  if (!doc) return null;
+  const candidates = doc.querySelectorAll(SELECTORS.openMenuPopup);
   for (const el of Array.from(candidates)) {
     if (el.getAttribute('aria-hidden') === 'true') continue;
     const parentDropdown = el.closest(SELECTORS.menuDropdown);

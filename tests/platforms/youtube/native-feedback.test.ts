@@ -203,7 +203,9 @@ describe('native feedback & tell youtube', () => {
 
     // Verify no SEND_FEEDBACK message dispatched
     const sendFeedbackMessages = sendMessageSpy.mock.calls.filter(
-      (args) => (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+      (args) =>
+        (args[0] as unknown as Record<string, unknown>)?.type ===
+        'SEND_FEEDBACK',
     );
     expect(sendFeedbackMessages).toHaveLength(0);
 
@@ -217,7 +219,8 @@ describe('native feedback & tell youtube', () => {
     expect(
       sendMessageSpy.mock.calls.filter(
         (args) =>
-          (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+          (args[0] as unknown as Record<string, unknown>)?.type ===
+          'SEND_FEEDBACK',
       ),
     ).toHaveLength(0);
 
@@ -231,7 +234,8 @@ describe('native feedback & tell youtube', () => {
     expect(
       sendMessageSpy.mock.calls.filter(
         (args) =>
-          (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+          (args[0] as unknown as Record<string, unknown>)?.type ===
+          'SEND_FEEDBACK',
       ),
     ).toHaveLength(0);
   });
