@@ -170,9 +170,7 @@ export function unwrapMenuItemData(
  * Accepts only a dropdown that is actually open (not aria-hidden="true",
  * not display:none, or [opened]).
  */
-export function getActivePopup(
-  root?: Document | Element,
-): Element | null {
+export function getActivePopup(root?: Document | Element): Element | null {
   const doc = root ?? (typeof document !== 'undefined' ? document : null);
   if (!doc) return null;
   const candidates = doc.querySelectorAll(SELECTORS.openMenuPopup);
