@@ -215,6 +215,7 @@
 [data-ac-action='block'],
 .ac-btn-clickbait,
 [data-ac-action='clickbait'] {
+  display: inline-flex;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
