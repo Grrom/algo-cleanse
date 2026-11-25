@@ -999,12 +999,7 @@ describe('collapse UI & channel actions', () => {
       });
       document.body.appendChild(tile);
 
-      evaluateAndProcessTile(
-        tile,
-        extractVideo(tile)!,
-        patterns,
-        autoSettings,
-      );
+      evaluateAndProcessTile(tile, extractVideo(tile)!, patterns, autoSettings);
       expect(trainQueue.getPendingCount()).toBe(1);
 
       // Disable autoNotInterested via settings update
