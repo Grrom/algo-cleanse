@@ -17,7 +17,6 @@ import * as nativeFeedbackModule from '../../../src/platforms/youtube/native-fee
 import {
   isSignedIn,
   resetFeedbackQueue,
-  sendDontRecommendChannel,
   sendNotInterested,
 } from '../../../src/platforms/youtube/native-feedback';
 import { SELECTORS } from '../../../src/platforms/youtube/selectors';
@@ -647,12 +646,10 @@ describe('native feedback & tell youtube', () => {
     btn2.setAttribute('aria-label', 'Action menu');
     tile2.appendChild(btn2);
 
-    let resolveFirstClick: (() => void) | null = null;
     btn1.addEventListener('click', () => {
       executionOrder.push('start-1');
       setTimeout(() => {
         executionOrder.push('end-1');
-        if (resolveFirstClick) resolveFirstClick();
       }, 50);
     });
 

@@ -971,16 +971,10 @@ describe('collapse UI & channel actions', () => {
     });
 
     it('clears trainQueue when autoNotInterested or enabled is toggled off, and validate drops ineligible job', async () => {
-      let tickCb: (() => void) | null = null;
       const fakeClock = {
         now: () => 1000,
-        setTimeout: (cb: () => void) => {
-          tickCb = cb;
-          return 1;
-        },
-        clearTimeout: () => {
-          tickCb = null;
-        },
+        setTimeout: () => 1,
+        clearTimeout: () => {},
       };
 
       const trainQueue = new TrainQueue({ clock: fakeClock });
