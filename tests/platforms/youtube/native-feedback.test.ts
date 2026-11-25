@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import type { Verdict } from '../../../src/core/engine';
 import { getDailyAutoCount } from '../../../src/core/train-queue';
@@ -15,6 +16,8 @@ import { handleBlockDontRecommend } from '../../../src/platforms/youtube/content
 import * as nativeFeedbackModule from '../../../src/platforms/youtube/native-feedback';
 import {
   isSignedIn,
+  resetFeedbackQueue,
+  sendDontRecommendChannel,
   sendNotInterested,
 } from '../../../src/platforms/youtube/native-feedback';
 import { SELECTORS } from '../../../src/platforms/youtube/selectors';
@@ -24,12 +27,15 @@ describe('native feedback & tell youtube', () => {
     fakeBrowser.reset();
     document.body.innerHTML = '';
     resetCollapseState();
+    resetFeedbackQueue();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
     resetCollapseState();
+    resetFeedbackQueue();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   // Acceptance criterion 1:
@@ -178,9 +184,10 @@ describe('native feedback & tell youtube', () => {
       .spyOn(nativeFeedbackModule, 'sendDontRecommendChannel')
       .mockResolvedValue('ok');
 
-    const globalFetchSpy = vi.fn();
-    (globalThis as unknown as { fetch: typeof globalFetchSpy }).fetch =
-      globalFetchSpy;
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const sendMessageSpy = vi.spyOn(browser.runtime, 'sendMessage');
 
     // A. Block with dontRecommendOnBlock: true -> called once
     await handleBlockDontRecommend('@blockchannel1', tile, {
@@ -193,7 +200,13 @@ describe('native feedback & tell youtube', () => {
     expect(statusEl.textContent).toBe(
       "✓ Told YouTube: Don't recommend channel",
     );
-    expect(globalFetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Verify no SEND_FEEDBACK message dispatched
+    const sendFeedbackMessages = sendMessageSpy.mock.calls.filter(
+      (args) => (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+    );
+    expect(sendFeedbackMessages).toHaveLength(0);
 
     // B. Same handle blocked again -> not called again
     await handleBlockDontRecommend('@blockchannel1', tile, {
@@ -201,7 +214,13 @@ describe('native feedback & tell youtube', () => {
       dontRecommendOnBlock: true,
     });
     expect(sendDontRecommendSpy).toHaveBeenCalledTimes(1);
-    expect(globalFetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(
+      sendMessageSpy.mock.calls.filter(
+        (args) =>
+          (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+      ),
+    ).toHaveLength(0);
 
     // C. dontRecommendOnBlock: false -> not called
     await handleBlockDontRecommend('@blockchannel2', tile, {
@@ -209,7 +228,13 @@ describe('native feedback & tell youtube', () => {
       dontRecommendOnBlock: false,
     });
     expect(sendDontRecommendSpy).toHaveBeenCalledTimes(1);
-    expect(globalFetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(
+      sendMessageSpy.mock.calls.filter(
+        (args) =>
+          (args[0] as Record<string, unknown>)?.type === 'SEND_FEEDBACK',
+      ),
+    ).toHaveLength(0);
   });
 
   // Acceptance criterion 9:
@@ -603,5 +628,54 @@ describe('native feedback & tell youtube', () => {
     expect(notInterestedBtn.disabled).toBe(false);
 
     cleanup();
+  });
+
+  it('serializes concurrent sendFeedbackAction calls so they run one at a time sequentially', async () => {
+    const tile1 = document.createElement('div');
+    const tile2 = document.createElement('div');
+    document.body.appendChild(tile1);
+    document.body.appendChild(tile2);
+
+    const executionOrder: string[] = [];
+
+    // Attach menu button to tiles
+    const btn1 = document.createElement('button');
+    btn1.setAttribute('aria-label', 'Action menu');
+    tile1.appendChild(btn1);
+
+    const btn2 = document.createElement('button');
+    btn2.setAttribute('aria-label', 'Action menu');
+    tile2.appendChild(btn2);
+
+    let resolveFirstClick: (() => void) | null = null;
+    btn1.addEventListener('click', () => {
+      executionOrder.push('start-1');
+      setTimeout(() => {
+        executionOrder.push('end-1');
+        if (resolveFirstClick) resolveFirstClick();
+      }, 50);
+    });
+
+    btn2.addEventListener('click', () => {
+      executionOrder.push('start-2');
+    });
+
+    // Make timeout short
+    (
+      window as unknown as { __AC_FEEDBACK_TIMEOUT_MS__?: number }
+    ).__AC_FEEDBACK_TIMEOUT_MS__ = 70;
+
+    const p1 = sendNotInterested(tile1);
+    const p2 = sendNotInterested(tile2);
+
+    await Promise.all([p1, p2]);
+
+    delete (window as unknown as { __AC_FEEDBACK_TIMEOUT_MS__?: number })
+      .__AC_FEEDBACK_TIMEOUT_MS__;
+
+    // start-2 should only occur after end-1
+    expect(executionOrder.indexOf('start-2')).toBeGreaterThan(
+      executionOrder.indexOf('end-1'),
+    );
   });
 });

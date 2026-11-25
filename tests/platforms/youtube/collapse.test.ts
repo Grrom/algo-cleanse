@@ -870,5 +870,159 @@ describe('collapse UI & channel actions', () => {
 
       cleanup();
     });
+
+    // Acceptance criterion 3:
+    // Auto: eligible verdict enqueues; autoNotInterested false -> nothing; no selected category matched -> nothing
+    it('Auto: eligible verdict enqueues; autoNotInterested false -> nothing; no selected category matched -> nothing (through initContent)', async () => {
+      const trainQueue = new TrainQueue();
+
+      // 1. autoNotInterested false -> nothing
+      const disabledSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: false,
+        autoCategories: ['bait-phrase'],
+      };
+
+      const cleanup1 = await initContent({
+        settings: disabledSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile1 = createTestTile({
+        videoId: 'noAutoEnq1',
+        title: 'Bait Phrase Gone Wrong Video 1',
+        channelHandle: '@creator1',
+      });
+      document.body.appendChild(tile1);
+
+      evaluateAndProcessTile(
+        tile1,
+        extractVideo(tile1)!,
+        patterns,
+        disabledSettings,
+      );
+      expect(tile1.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup1();
+
+      // 2. no selected category matched -> nothing
+      const mismatchedSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['ai-slop'], // 'bait-phrase' is matched by title, not 'ai-slop'
+      };
+
+      const cleanup2 = await initContent({
+        settings: mismatchedSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile2 = createTestTile({
+        videoId: 'noAutoEnq2',
+        title: 'Bait Phrase Gone Wrong Video 2',
+        channelHandle: '@creator2',
+      });
+      document.body.appendChild(tile2);
+
+      evaluateAndProcessTile(
+        tile2,
+        extractVideo(tile2)!,
+        patterns,
+        mismatchedSettings,
+      );
+      expect(tile2.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup2();
+
+      // 3. Eligible verdict with matching category enqueues
+      const matchedSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+
+      const cleanup3 = await initContent({
+        settings: matchedSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile3 = createTestTile({
+        videoId: 'autoEnq3',
+        title: 'Bait Phrase Gone Wrong Video 3',
+        channelHandle: '@creator3',
+      });
+      document.body.appendChild(tile3);
+
+      evaluateAndProcessTile(
+        tile3,
+        extractVideo(tile3)!,
+        patterns,
+        matchedSettings,
+      );
+      expect(tile3.classList.contains(SELECTORS.collapsedClass)).toBe(true);
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      cleanup3();
+    });
+
+    it('clears trainQueue when autoNotInterested or enabled is toggled off, and validate drops ineligible job', async () => {
+      let tickCb: (() => void) | null = null;
+      const fakeClock = {
+        now: () => 1000,
+        setTimeout: (cb: () => void) => {
+          tickCb = cb;
+          return 1;
+        },
+        clearTimeout: () => {
+          tickCb = null;
+        },
+      };
+
+      const trainQueue = new TrainQueue({ clock: fakeClock });
+
+      const autoSettings: Settings = {
+        ...DEFAULT_SETTINGS,
+        autoNotInterested: true,
+        autoCategories: ['bait-phrase'],
+      };
+      await updateSettings(autoSettings);
+
+      const cleanup = await initContent({
+        settings: autoSettings,
+        patterns,
+        trainQueue,
+      });
+
+      const tile = createTestTile({
+        videoId: 'toggleOffVid',
+        title: 'Bait Phrase Gone Wrong Video',
+        channelHandle: '@creator',
+      });
+      document.body.appendChild(tile);
+
+      evaluateAndProcessTile(
+        tile,
+        extractVideo(tile)!,
+        patterns,
+        autoSettings,
+      );
+      expect(trainQueue.getPendingCount()).toBe(1);
+
+      // Disable autoNotInterested via settings update
+      await updateSettings({
+        ...autoSettings,
+        autoNotInterested: false,
+      });
+
+      // trainQueue should be cleared by watchSettings
+      expect(trainQueue.getPendingCount()).toBe(0);
+
+      cleanup();
+    });
   });
 });

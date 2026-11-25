@@ -19,7 +19,11 @@ import {
 } from '../../feedback/send';
 import { extractVideo } from './extract';
 import { onAllowed, onBlocked, onCollapsed, onRevealed } from './events';
-import { isSignedIn, sendNotInterested } from './native-feedback';
+import {
+  isSignedIn,
+  resetFeedbackQueue,
+  sendNotInterested,
+} from './native-feedback';
 import { SELECTORS } from './selectors';
 
 const sessionRevealedVideoIds = new Set<string>();
@@ -875,4 +879,5 @@ export function resetCollapseState(): void {
   currentPatterns = null;
   lastBadgeCount = null;
   globalTrainQueue = null;
+  resetFeedbackQueue();
 }

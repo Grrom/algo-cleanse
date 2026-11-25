@@ -38,7 +38,7 @@ export async function handleBlockDontRecommend(
   tile: Element,
   settings: Settings,
 ): Promise<void> {
-  if (!settings.dontRecommendOnBlock || !isSignedIn()) {
+  if (!settings.enabled || !settings.dontRecommendOnBlock || !isSignedIn()) {
     return;
   }
 
@@ -88,6 +88,9 @@ export async function initContent(options?: {
 
   const unwatchSettings = watchSettings((newSettings) => {
     settings = newSettings;
+    if (!settings.enabled || !settings.autoNotInterested) {
+      trainQueue.clear();
+    }
     reEvaluateAllTiles(patterns, settings);
   });
 
@@ -116,6 +119,8 @@ export async function initContent(options?: {
         videoId: video.videoId,
         channelHandle: video.channelHandle,
         validate: () => {
+          if (!settings.enabled) return 'drop';
+          if (!isAutoEligible(verdict, settings)) return 'drop';
           if (!tile.isConnected) return 'drop';
           const currentVideo = extractVideo(tile);
           if (currentVideo?.videoId !== video.videoId) return 'drop';
