@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "patterns:check": "jiti scripts/check-patterns.ts",
+    "patterns:revision-check": "jiti scripts/check-revision-bump.ts",
     "test": "vitest run",
     "test:worker": "npm test --prefix worker",
     "test:coverage": "vitest run --coverage",

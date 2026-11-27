@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -34,6 +36,12 @@ jobs:
 
       - name: Check patterns
         run: npm run patterns:check
+
+      - name: Check patterns revision bump
+        if: github.event_name == 'pull_request'
+        run: |
+          git show origin/${{ github.base_ref }}:patterns/patterns.json > /tmp/base-patterns.json 2>/dev/null || rm -f /tmp/base-patterns.json
+          npm run patterns:revision-check -- /tmp/base-patterns.json patterns/patterns.json
 
       - name: Run unit tests with coverage
         run: npm run test:coverage
@@ -78,6 +86,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
