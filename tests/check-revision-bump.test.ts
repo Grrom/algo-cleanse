@@ -9,6 +9,7 @@ import {
   checkRevisionBumpFiles,
   isDeepEqual,
 } from '../scripts/check-revision-bump';
+import { categorySchema, ruleSchema } from '../src/core/patterns-schema';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -82,8 +83,8 @@ describe('checkRevisionBump & scripts/check-revision-bump.ts', () => {
         {
           id: 'rule-2',
           category: 'cat-2',
-          type: 'punctRun',
-          pattern: '!{3,}',
+          type: 'punctuationRun',
+          min: 3,
           weight: 1,
           label: 'Excessive punctuation',
         },
@@ -104,8 +105,8 @@ describe('checkRevisionBump & scripts/check-revision-bump.ts', () => {
         {
           id: 'rule-2',
           category: 'cat-2',
-          type: 'punctRun',
-          pattern: '!{3,}',
+          type: 'punctuationRun',
+          min: 3,
           weight: 1,
           label: 'Excessive punctuation',
         },
@@ -132,8 +133,8 @@ describe('checkRevisionBump & scripts/check-revision-bump.ts', () => {
         {
           id: 'rule-2',
           category: 'cat-2',
-          type: 'punctRun',
-          pattern: '!{3,}',
+          type: 'punctuationRun',
+          min: 3,
           weight: 1,
           label: 'Excessive punctuation',
         },
@@ -334,6 +335,34 @@ describe('checkRevisionBump & scripts/check-revision-bump.ts', () => {
     // Remote updates config
     expect(doc).toContain('CLOUDFLARE_API_TOKEN');
     expect(doc).toContain('WXT_API_BASE_URL');
+
+    // Doc-test: verify that example category and rule snippets parse with their respective schemas
+    const categoryBlockMatch = doc.match(
+      /### Adding a Category[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(categoryBlockMatch).not.toBeNull();
+    const exampleCategory = JSON.parse(categoryBlockMatch![1]!);
+    expect(categorySchema.safeParse(exampleCategory).success).toBe(true);
+
+    const ruleBlockMatch = doc.match(
+      /### Adding a Rule[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(ruleBlockMatch).not.toBeNull();
+    const exampleRule = JSON.parse(ruleBlockMatch![1]!);
+    expect(ruleSchema.safeParse(exampleRule).success).toBe(true);
+
+    // Verify all supported schema types and required fields are documented
+    expect(doc).toContain('`regex`');
+    expect(doc).toContain('`capsRatio`');
+    expect(doc).toContain('`emojiCount`');
+    expect(doc).toContain('`punctuationRun`');
+    expect(doc).toContain('`channel`');
+    expect(doc).toContain('handles');
+
+    // Verify local instructions include creating /tmp/base-patterns.json
+    expect(doc).toContain(
+      'git fetch origin main && git show origin/main:patterns/patterns.json > /tmp/base-patterns.json',
+    );
 
     // 2. Linked from README.md
     expect(fs.existsSync(readmePath)).toBe(true);

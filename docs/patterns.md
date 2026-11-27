@@ -72,7 +72,7 @@ Rules define criteria evaluated against video titles and metadata:
 {
   "id": "rule-identifier",
   "category": "new-category",
-  "type": "titleRegex",
+  "type": "regex",
   "pattern": "\\b(sample|pattern)\\b",
   "flags": "i",
   "weight": 2,
@@ -80,13 +80,15 @@ Rules define criteria evaluated against video titles and metadata:
 }
 ```
 
-Common rule types supported by `src/core/engine.ts`:
+Common rule types supported by `src/core/engine.ts` (as defined in `src/core/patterns-schema.ts`):
 
-- `titleRegex`: Evaluates a regular expression against the video title.
-- `capsRatio`: Measures the ratio of uppercase letters in titles with a minimum length.
-- `punctRun`: Detects repeated punctuation marks (e.g. `!!!`, `???`).
-- `emojiCount`: Detects titles containing too many emoji characters.
-- `channelId`: Matches specific channel IDs (e.g. known AI content channels).
+- `regex`: Evaluates a regular expression against the video title. Required: `pattern` (string, max 200 characters), optional `flags` limited to `i`/`u` (e.g. `"i"`, `"iu"`).
+- `capsRatio`: Measures the ratio of uppercase letters in titles. Required: `min` (number), optional `minLetters` (number).
+- `emojiCount`: Detects titles containing too many emoji characters. Required: `min` (number).
+- `punctuationRun`: Detects repeated punctuation marks (e.g. `!!!`, `???`). Required: `min` (number).
+- `channel`: Matches channels by their handle. Required: `handles` (array of strings, e.g. `["@example-channel"]`).
+
+All rules require base fields: `id` (string), `category` (string referencing an existing category `id`), `weight` (number), and `label` (string).
 
 ### Validating Changes Locally
 
@@ -96,7 +98,8 @@ Before opening a pull request, run:
 # Validate patterns against the Zod schema
 npm run patterns:check
 
-# Check revision bump against the base branch
+# Generate base patterns file from base branch and check revision bump
+git fetch origin main && git show origin/main:patterns/patterns.json > /tmp/base-patterns.json
 npm run patterns:revision-check -- /tmp/base-patterns.json patterns/patterns.json
 
 # Run unit tests
